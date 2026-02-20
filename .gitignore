@@ -1,0 +1,49 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / Secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Python
+backend/venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# Node / Mobile
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+
+# Claude AI personal config (not for teammates)
+.claude/
+
+# Redundant planning docs (content merged into README.md)
+FEATURE_IDEAS.md
+LAYERS_PROJECT_ROADMAP.md
+PROJECT_STRUCTURE.md
+QUICK_START.md
+WEEK1_COMPLETE.md
+FOG_OF_WAR.md
+GRID_MATH.md
+LayersRoadmapDashboard.jsx

@@ -1,0 +1,86 @@
+services:
+  # PostgreSQL with PostGIS for geo-spatial queries
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: layers_postgres
+    environment:
+      POSTGRES_USER: layers_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: layers_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U layers_admin -d layers_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching, queues, and real-time features
+  redis:
+    image: redis:7-alpine
+    container_name: layers_redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO for file storage (S3-compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: layers_minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Console
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Backend API service
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: layers_backend
+  #   environment:
+  #     DATABASE_URL: postgresql+asyncpg://layers_admin:${POSTGRES_PASSWORD}@postgres:5432/layers_db
+  #     REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+  #     MINIO_ENDPOINT: minio:9000
+  #     MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+  #     MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./backend/app:/app/app # Hot reload
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  default:
+    name: layers_network

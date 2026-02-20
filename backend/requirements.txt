@@ -1,0 +1,63 @@
+# LAYERS Backend Dependencies
+# Install: pip install -r requirements.txt
+
+# ============ Core Framework ============
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+python-dotenv==1.0.1
+
+# ============ Database ============
+sqlalchemy[asyncio]==2.0.25
+asyncpg==0.29.0                    # PostgreSQL async driver
+psycopg2-binary==2.9.9             # PostgreSQL sync driver (for Alembic)
+alembic==1.13.1                    # Database migrations
+geoalchemy2==0.14.3                # PostGIS support # Provides: Geography, ST_DWithin, ST_Distance, ST_MakePoint
+numpy<2                            # Pin to 1.x for shapely compatibility
+
+# ============ Authentication ============
+python-jose[cryptography]==3.3.0  # JWT tokens
+passlib[bcrypt]==1.7.4            # Password hashing
+bcrypt==4.1.2
+
+# ============ Validation ============
+pydantic==2.6.1
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# ============ Redis & Caching ============
+redis==5.0.1
+aioredis==2.0.1
+
+# ============ File Storage ============
+minio==7.2.3
+aiofiles==23.2.1
+pillow==10.2.0                    # Image processing
+
+# ============ Background Tasks ============
+celery==5.3.6
+flower==2.0.1                     # Celery monitoring
+
+# ============ Content Moderation ============
+# nudenet==3.0.2                   # NSFW detection (optional, heavy)
+# better-profanity==0.7.0         # Text moderation
+
+# ============ Push Notifications ============
+firebase-admin==6.4.0
+
+# ============ Testing ============
+pytest==8.0.0
+pytest-asyncio==0.23.5
+httpx==0.26.0                     # Async HTTP client for testing
+aiosqlite==0.19.0                 # SQLite async for fast tests
+
+# ============ Admin Panel ============
+sqladmin==0.16.0
+
+# ============ Utilities ============
+geopy==2.4.1                      # Geo calculations
+shapely==2.0.2                    # Geometric operations
+httpx==0.26.0
+
+# Shapely - Python geometry operations (used by GeoAlchemy2)
+Shapely>=2.0.0
