@@ -10,7 +10,14 @@ Run: python scripts/optimize_database.py
 
 import asyncio
 import time
+import sys
+from pathlib import Path
 from typing import Optional
+
+# Ensure backend/app is importable when running from repo root.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker

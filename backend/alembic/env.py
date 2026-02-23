@@ -57,6 +57,16 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+def _include_object(object, name, type_, reflected, compare_to):
+    """Exclude PostGIS internal tables from autogenerate."""
+    if type_ == "table" and name in (
+        "spatial_ref_sys", "geometry_columns", "geography_columns",
+        "raster_columns", "raster_overviews",
+    ):
+        return False
+    return True
+
+
 def run_migrations_online() -> None:
     """
     Run migrations in 'online' mode.
@@ -74,8 +84,8 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
-            # Include PostGIS types
-            include_schemas=True,
+            include_schemas=False,
+            include_object=_include_object,
         )
 
         with context.begin_transaction():

@@ -98,37 +98,29 @@ app.include_router(api_router, prefix="/api/v1")
 
 
 # Health check endpoint
-@app.get("/health", tags=["Health"])
-async def health_check():
-    """
-    Health check endpoint.
-    Returns service status for monitoring.
-    """
-    return {
-        "status": "healthy",
-        "service": settings.app_name,
-        "version": settings.app_version
-    }
+# @app.get("/health", tags=["Health"])
+# async def health_check():
+#     """
+#     Health check endpoint.
+#     Returns service status for monitoring.
+#     """
+#     return {
+#         "status": "healthy",
+#         "service": settings.app_name,
+#         "version": settings.app_version
+#     }
 
 
-# Root endpoint
-@app.get("/", tags=["Root"])
-async def root():
+# Hello endpoint
+@app.get("/hello", tags=["Greeting"])
+async def greeting():
     """
-    Root endpoint with API information.
+    Simple greeting endpoint to test API is running.
     """
     return {
-        "message": "🌆 Welcome to LAYERS API",
-        "tagline": "See the hidden layers of your city",
+        "message": f"Welcome to {settings.app_name} API!",
         "version": settings.app_version,
-        "docs": "/docs" if settings.debug else "Disabled in production",
-        "endpoints": {
-            "auth": "/api/v1/auth",
-            "map": "/api/v1/map",
-            "artifacts": "/api/v1/artifacts",
-            "social": "/api/v1/social",
-            "commerce": "/api/v1/commerce"
-        }
+        "description": "See /docs for API documentation."
     }
 
 
