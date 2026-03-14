@@ -29,6 +29,7 @@ export const Config = {
     PAPER_PLANE_MIN_DISTANCE: 200, // Min distance for paper planes
     PAPER_PLANE_MAX_DISTANCE: 1000, // Max distance
     CAMPFIRE_RADIUS: 50, // Campfire chat radius
+    NEARBY_RADIUS_DEFAULT: 1000, // Default search radius in meters
   },
 
   // Slow Mail Settings

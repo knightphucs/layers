@@ -41,6 +41,38 @@ from app.services.anti_cheat_service import (
     AntiCheatService,
 )
 
+# Shared helper: handle result from analyze_location consistently across all validators
+async def _handle_result(result, user_id, db) -> None:
+    """
+    Apply strike logic based on detection result severity:
+    - critical  → immediate strike + (optionally) raise 403
+    - suspicious → increment sliding-window counter; strike after N events
+    - warning   → log only (no action)
+
+    Raises HTTPException if the violation is critical and should_ban is True.
+    Returns normally otherwise.
+    """
+    if result.is_clean:
+        return
+
+    if result.severity == "critical":
+        strikes = await AntiCheatService.add_strike(user_id, db)
+        if result.should_ban:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "CHEAT_DETECTED",
+                    "message": "Location spoofing detected. Your account has been flagged.",
+                    "violations": result.violations,
+                    "strikes": strikes,
+                },
+            )
+    elif result.severity == "suspicious":
+        # Accumulate; only strike after SUSPICIOUS_EVENTS_PER_STRIKE occurrences
+        for violation in result.violations:
+            await AntiCheatService.add_suspicious_event(user_id, db, violation)
+    # warning = already logged by analyze_location, no further action
+
 
 # ============================================================
 # 1. FASTAPI DEPENDENCY (FOR REQUEST BODY)
@@ -107,34 +139,9 @@ async def validate_location(
         provider=body.get("provider"),
     )
     
-    # Step 3: Run anti-cheat analysis
+    # Step 3: Run anti-cheat analysis + apply strike logic
     result = await AntiCheatService.analyze_location(current_user.id, metadata)
-    
-    if result.is_clean:
-        return current_user
-    
-    # Step 4: Handle violations
-    if result.severity == "critical":
-        # Critical = immediate action
-        strikes = await AntiCheatService.add_strike(current_user.id, db)
-        
-        if result.should_ban:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "CHEAT_DETECTED",
-                    "message": "Location spoofing detected. Your account has been flagged.",
-                    "violations": result.violations,
-                    "strikes": strikes,
-                }
-            )
-    
-    elif result.severity == "suspicious":
-        # Suspicious = warn + log (don't block immediately)
-        await AntiCheatService.add_strike(current_user.id, db)
-        # Still allow the request but it's logged
-    
-    # Warning severity = just log, don't take action
+    await _handle_result(result, current_user.id, db)
     return current_user
 
 
@@ -181,16 +188,7 @@ async def require_clean_location(
     )
     
     result = await AntiCheatService.analyze_location(current_user.id, metadata)
-    
-    if result.should_ban:
-        await AntiCheatService.add_strike(current_user.id, db)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "CHEAT_DETECTED", "violations": result.violations}
-        )
-    elif result.severity == "suspicious":
-        await AntiCheatService.add_strike(current_user.id, db)
-    
+    await _handle_result(result, current_user.id, db)
     return current_user
 
 
@@ -236,23 +234,4 @@ async def validate_location_update(
     )
 
     result = await AntiCheatService.analyze_location(user_id, metadata)
-
-    if result.is_clean:
-        return
-
-    # Handle violations
-    if result.severity == "critical":
-        await AntiCheatService.add_strike(user_id, db)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": "CHEAT_DETECTED",
-                "message": "Location spoofing detected. Your account has been flagged.",
-                "violations": result.violations,
-            }
-        )
-    elif result.severity == "suspicious":
-        # Log + strike but don't block immediately
-        await AntiCheatService.add_strike(user_id, db)
-
-    # Warning severity = just logged via service, no explicit action needed here
+    await _handle_result(result, user_id, db)

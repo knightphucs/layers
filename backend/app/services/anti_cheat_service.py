@@ -42,7 +42,8 @@ logger = logging.getLogger(__name__)
 # ============================================================
 MAX_SPEED_KMH = 200          # Max realistic speed (fast train)
 TELEPORT_THRESHOLD_KM = 5    # >5km in 1 second = teleport (Masterplan rule)
-MIN_TIME_BETWEEN_UPDATES = 0.5  # Minimum 0.5 seconds between updates
+MIN_TIME_BETWEEN_UPDATES = 0.5  # Minimum 0.5 seconds between updates (for teleport calc only)
+ANTI_CHEAT_COOLDOWN_SECONDS = 5  # Skip analysis if last check was < 5s ago (avoids false RAPID_UPDATES from concurrent API calls)
 STRIKE_WARNING = 1
 STRIKE_TEMP_BAN = 2
 STRIKE_PERM_BAN = 3
@@ -50,6 +51,8 @@ TEMP_BAN_HOURS = 24
 MAX_LOCATION_HISTORY = 50     # Keep last 50 positions per user
 SENSOR_STILL_THRESHOLD = 0.5  # m/s² — below this = phone is "still"
 GPS_MOVE_THRESHOLD = 50       # meters — GPS moved more than this but phone still? Suspicious
+STATIC_LOCATION_MIN_READINGS = 10  # Need at least 10 identical readings before flagging (was 4, too low)
+SUSPICIOUS_EVENTS_PER_STRIKE = 5   # How many "suspicious" events before adding a real strike
 
 
 # ============================================================
@@ -117,6 +120,14 @@ def haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
 # ============================================================
 _location_history: dict[str, list[LocationHistoryEntry]] = {}
 
+# Per-user last anti-cheat run timestamp (to enforce cooldown)
+# Prevents false positives from concurrent API calls
+_last_check_time: dict[str, datetime] = {}
+
+# Per-user suspicious event counter for sliding-window strike logic
+# { user_id_str: count }  — resets when a real strike is issued
+_suspicious_event_count: dict[str, int] = {}
+
 
 def get_user_history(user_id: UUID) -> list[LocationHistoryEntry]:
     """Get user's recent location history."""
@@ -136,7 +147,22 @@ def add_to_history(user_id: UUID, entry: LocationHistoryEntry):
 
 def clear_user_history(user_id: UUID):
     """Clear user's location history (on ban or reset)."""
-    _location_history.pop(str(user_id), None)
+    key = str(user_id)
+    _location_history.pop(key, None)
+    _last_check_time.pop(key, None)
+    _suspicious_event_count.pop(key, None)
+
+
+def increment_suspicious_count(user_id: UUID) -> int:
+    """Increment and return the suspicious event counter for a user."""
+    key = str(user_id)
+    _suspicious_event_count[key] = _suspicious_event_count.get(key, 0) + 1
+    return _suspicious_event_count[key]
+
+
+def reset_suspicious_count(user_id: UUID):
+    """Reset suspicious counter after a strike is issued."""
+    _suspicious_event_count.pop(str(user_id), None)
 
 
 # ============================================================
@@ -170,46 +196,49 @@ def check_teleport(
 ) -> Optional[str]:
     """
     Check if user 'teleported' — moved impossibly fast.
-    
+
     From Masterplan: "If coordinates change >5km in 1 second → Ban"
-    
+
     We also check against MAX_SPEED_KMH for less extreme but still
     suspicious movement (e.g., 300 km/h on foot).
-    
+
     Returns violation string or None if clean.
     """
     if not history:
         return None  # First location, nothing to compare
-    
+
     last = history[-1]
-    
+
     # Time difference in seconds
     time_diff = (metadata.timestamp - last.timestamp).total_seconds()
-    
-    if time_diff < MIN_TIME_BETWEEN_UPDATES:
-        # Too fast updates — possible automated tool
-        return f"RAPID_UPDATES: Only {time_diff:.2f}s between location updates (min: {MIN_TIME_BETWEEN_UPDATES}s)"
-    
+
+    # Check time anomaly first (clock went backwards)
     if time_diff <= 0:
         return "TIME_ANOMALY: New location timestamp is before or equal to previous"
-    
+
+    # Skip teleport/speed checks if updates are too close together.
+    # This is NOT a violation — the app makes concurrent API calls legitimately.
+    # We simply cannot compute meaningful speed with < 0.5s resolution.
+    if time_diff < MIN_TIME_BETWEEN_UPDATES:
+        return None
+
     # Distance in meters
     distance_m = haversine_meters(
         last.latitude, last.longitude,
         metadata.latitude, metadata.longitude
     )
     distance_km = distance_m / 1000.0
-    
+
     # Speed in km/h
     speed_kmh = (distance_km / time_diff) * 3600
-    
+
     # CRITICAL: Teleport check (Masterplan rule)
     if distance_km > TELEPORT_THRESHOLD_KM and time_diff <= 1.0:
         return (
             f"TELEPORT_DETECTED: Moved {distance_km:.1f}km in {time_diff:.1f}s "
             f"(speed: {speed_kmh:.0f} km/h). This is physically impossible."
         )
-    
+
     # Suspicious speed check (less severe)
     if speed_kmh > MAX_SPEED_KMH:
         return (
@@ -217,7 +246,7 @@ def check_teleport(
             f"(moved {distance_km:.1f}km in {time_diff:.0f}s). "
             f"Max allowed: {MAX_SPEED_KMH} km/h"
         )
-    
+
     return None
 
 
@@ -296,16 +325,22 @@ def check_suspicious_patterns(history: list[LocationHistoryEntry]) -> Optional[s
     coords = [(h.latitude, h.longitude) for h in recent]
     unique_coords = set(coords)
     
-    if len(unique_coords) == 1 and len(coords) > 3:
-        # All positions are exactly the same — suspicious if there are many
+    if len(unique_coords) == 1 and len(coords) >= STATIC_LOCATION_MIN_READINGS:
+        # All positions are exactly the same — only flag after many readings
+        # (users legitimately stand still; low reading count = false positive)
         return (
             f"STATIC_LOCATION: {len(coords)} consecutive identical coordinates. "
             "Real GPS always has slight drift."
         )
     
-    # Check for perfect accuracy (real GPS fluctuates)
+    # Check for perfect accuracy (real GPS fluctuates).
+    # Skip if all entries use the default value (10.0) — that just means
+    # the client didn't send accuracy, not that it's spoofed.
     accuracies = [h.accuracy for h in recent]
-    if all(a == accuracies[0] for a in accuracies) and len(accuracies) > 5:
+    default_accuracy = 10.0
+    all_default = all(a == default_accuracy for a in accuracies)
+    if (not all_default and all(a == accuracies[0] for a in accuracies)
+            and len(accuracies) > 5):
         return (
             f"PERFECT_ACCURACY: All {len(accuracies)} recent readings have "
             f"identical accuracy ({accuracies[0]}m). Real GPS accuracy varies."
@@ -341,8 +376,26 @@ class AntiCheatService:
                 await AntiCheatService.add_strike(user.id, db)
         """
         result = CheatDetectionResult()
+
+        # Cooldown: skip analysis if we ran it very recently for this user.
+        # This prevents false positives from the app making concurrent API calls
+        # (e.g., GET /artifacts/nearby + POST /explore/batch firing within ms of each other).
+        now = datetime.utcnow()
+        key = str(user_id)
+        last_check = _last_check_time.get(key)
+        if last_check and (now - last_check).total_seconds() < ANTI_CHEAT_COOLDOWN_SECONDS:
+            # Still add to history so we track movement, but skip violation checks
+            add_to_history(user_id, LocationHistoryEntry(
+                latitude=metadata.latitude,
+                longitude=metadata.longitude,
+                timestamp=metadata.timestamp,
+                accuracy=metadata.accuracy,
+            ))
+            return result  # Clean pass during cooldown window
+
+        _last_check_time[key] = now
         history = get_user_history(user_id)
-        
+
         # ---- Method 1: isMocked ----
         mock_violation = check_is_mocked(metadata)
         if mock_violation:
@@ -436,8 +489,33 @@ class AntiCheatService:
             await AntiCheatService.ban_user(user_id, db, permanent=False)
         
         await db.commit()
+        reset_suspicious_count(user_id)  # Reset sliding window after a real strike
         logger.warning(f"STRIKE: User {user_id} now has {new_strikes} strike(s)")
         return new_strikes
+
+    @staticmethod
+    async def add_suspicious_event(user_id: UUID, db: AsyncSession, violation: str) -> int:
+        """
+        Record a suspicious (non-critical) event.
+        After SUSPICIOUS_EVENTS_PER_STRIKE events, escalate to a real strike.
+
+        This prevents punishing users for occasional anomalies (GPS drift,
+        brief signal loss) while still catching persistent pattern cheating
+        (e.g., someone consistently moving at 300 km/h).
+
+        Returns: current suspicious event count
+        """
+        count = increment_suspicious_count(user_id)
+        logger.info(
+            f"SUSPICIOUS [{count}/{SUSPICIOUS_EVENTS_PER_STRIKE}]: "
+            f"User {user_id} | {violation}"
+        )
+        if count >= SUSPICIOUS_EVENTS_PER_STRIKE:
+            logger.warning(
+                f"SUSPICIOUS threshold reached for user {user_id} — issuing strike"
+            )
+            await AntiCheatService.add_strike(user_id, db)
+        return count
 
     @staticmethod
     async def ban_user(
