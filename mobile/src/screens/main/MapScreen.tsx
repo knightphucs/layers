@@ -20,6 +20,7 @@ import {
   Platform,
   Alert,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import MapView, {
   Marker,
@@ -469,79 +470,82 @@ function MapScreenInner() {
 
       <OfflineBanner isShadow={isShadowMode} />
 
-      {/* ======== HEADER (GPS/Offline) ======== */}
-      <SafeAreaView edges={["top"]} style={styles.headerOverlay}>
-        <View style={styles.headerTopRow}>
+      {/* ======== TOP SINGLE ROW HEADER ======== */}
+      <SafeAreaView
+        edges={["top"]}
+        style={styles.topOverlay}
+        pointerEvents="box-none"
+      >
+        <View style={styles.topSingleRow} pointerEvents="box-none">
+          {/* Nút Layer Toggle (Left) */}
           <TouchableOpacity
-            style={[styles.layerToggle, { backgroundColor: colors.surface }]}
+            style={[
+              styles.compactPill,
+              { backgroundColor: colors.surface }, // Removed marginRight: 8 here
+            ]}
             onPress={handleLayerToggle}
             activeOpacity={0.7}
           >
-            <Text style={styles.layerIcon}>{isShadowMode ? "🌙" : "☀️"}</Text>
-            <Text style={[styles.layerText, { color: colors.text }]}>
+            <Text style={styles.iconText}>{isShadowMode ? "🌙" : "☀️"}</Text>
+            <Text style={[styles.pillText, { color: colors.text }]}>
               {isShadowMode ? "Shadow" : "Light"}
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.headerRight}>
+          {/* Status Badges (Right) */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.statusScrollView}
+            contentContainerStyle={styles.statusScrollRow}
+            pointerEvents="box-none"
+            bounces={true}
+          >
             {!isConnected && (
-              <View style={styles.offlineChip}>
-                <Text style={styles.offlineText}>📡 Offline</Text>
+              <View style={[styles.microChip, { backgroundColor: "#EF4444" }]}>
+                <Text style={styles.microChipText}>📡 Offline</Text>
               </View>
             )}
 
-            {/* GPS Indicator */}
-            <GPSAccuracyIndicator
-              accuracy={accuracy ?? 0}
-              isShadow={isShadowMode}
-            />
-
             {nearbyArtifacts.length > 0 && (
               <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: colors.surface },
-                ]}
+                style={[styles.microChip, { backgroundColor: colors.surface }]}
               >
-                <Text style={styles.statusIcon}>
+                <Text style={styles.iconText}>
                   {isShadowMode ? "👻" : "💌"}
                 </Text>
-                <Text style={[styles.statusText, { color: colors.primary }]}>
-                  {nearbyArtifacts.length} nearby
+                <Text style={[styles.microChipText, { color: colors.primary }]}>
+                  {nearbyArtifacts.length}
                 </Text>
               </View>
             )}
 
             {isExploring && bufferSize > 0 && (
               <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: colors.surface },
-                ]}
+                style={[styles.microChip, { backgroundColor: colors.surface }]}
               >
-                <Text style={styles.statusIcon}>🗺️</Text>
+                <Text style={styles.iconText}>🗺️</Text>
                 <Text
-                  style={[styles.statusText, { color: colors.textSecondary }]}
+                  style={[
+                    styles.microChipText,
+                    { color: colors.textSecondary },
+                  ]}
                 >
-                  {bufferSize}pts
+                  {bufferSize} pts
                 </Text>
               </View>
             )}
 
-            <View
-              style={[styles.statusBadge, { backgroundColor: colors.surface }]}
-            >
-              <Text style={styles.statusIcon}>{isWatching ? "📍" : "📌"}</Text>
-              <Text
-                style={[styles.statusText, { color: colors.textSecondary }]}
-              >
-                {isWatching ? "Live" : "Static"}
-              </Text>
-            </View>
-          </View>
+            {/* GPSAccuracyIndicator  */}
+            <GPSAccuracyIndicator
+              accuracy={accuracy ?? 0}
+              isShadow={isShadowMode}
+            />
+          </ScrollView>
         </View>
 
-        <View style={styles.fogStatsContainer}>
+        {/* Fog Stats */}
+        <View style={styles.fogStatsContainer} pointerEvents="none">
           <FogStatsBar
             fogPercentage={fogPercentage}
             totalExplored={totalStats.totalChunksAllTime}
@@ -550,76 +554,55 @@ function MapScreenInner() {
         </View>
       </SafeAreaView>
 
-      {/* ======== BOTTOM CONTROLS ======== */}
-      <SafeAreaView edges={["bottom"]} style={styles.bottomControls}>
-        {/* Info Chips */}
-        {location && (
-          <View style={styles.infoChipRow}>
-            <View
-              style={[styles.infoChip, { backgroundColor: colors.surface }]}
-            >
-              <Text style={styles.infoChipIcon}>📍</Text>
-              <Text style={[styles.infoChipText, { color: colors.text }]}>
-                {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-              </Text>
-            </View>
-            <View
-              style={[styles.infoChip, { backgroundColor: colors.surface }]}
-            >
-              <Text style={styles.infoChipIcon}>
-                {isShadowMode ? "👻" : "💌"}
-              </Text>
-              <Text style={[styles.infoChipText, { color: colors.primary }]}>
-                {nearbyArtifacts.filter((a) => a.is_within_range).length}{" "}
-                {isShadowMode ? "glitch zones" : "unlockable"}
-              </Text>
-            </View>
-          </View>
-        )}
+      {/* ======== RIGHT VERTICAL TOOLBAR ======== */}
+      <View style={styles.rightToolbar} pointerEvents="box-none">
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: colors.surface }]}
+          onPress={() => {
+            haptics.selection();
+            isWatching ? stopWatching() : watchLocation();
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.actionIcon}>{isWatching ? "📍" : "📌"}</Text>
+        </TouchableOpacity>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.surface }]}
-            onPress={handleRecenter}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.actionIcon}>🎯</Text>
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: colors.surface }]}
+          onPress={() => setShowFog(!showFog)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.actionIcon}>{showFog ? "🌫️" : "👁️"}</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.createBtn,
-              { backgroundColor: isShadowMode ? "#8B5CF6" : "#3B82F6" },
-            ]}
-            onPress={handleCreateArtifact}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.createIcon}>{isShadowMode ? "🌙" : "✉️"}</Text>
-            <Text style={styles.createLabel}>
-              {isShadowMode ? "Drop Shadow" : "Drop Memory"}
-            </Text>
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: colors.surface }]}
+          onPress={handleRecenter}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.actionIcon}>🎯</Text>
+        </TouchableOpacity>
+      </View>
 
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.surface }]}
-            onPress={() => setShowFog(!showFog)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.actionIcon}>{showFog ? "🌫️" : "👁️"}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.surface }]}
-            onPress={() => {
-              haptics.selection();
-              isWatching ? stopWatching() : watchLocation();
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.actionIcon}>{isWatching ? "⏸️" : "▶️"}</Text>
-          </TouchableOpacity>
-        </View>
+      {/* ======== BOTTOM FAB ======== */}
+      <SafeAreaView
+        edges={["bottom"]}
+        style={styles.bottomOverlay}
+        pointerEvents="box-none"
+      >
+        <TouchableOpacity
+          style={[
+            styles.createFab,
+            { backgroundColor: isShadowMode ? "#8B5CF6" : "#3B82F6" },
+          ]}
+          onPress={handleCreateArtifact}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.createIcon}>{isShadowMode ? "🌙" : "✉️"}</Text>
+          <Text style={styles.createLabel}>
+            {isShadowMode ? "Drop Shadow" : "Drop Memory"}
+          </Text>
+        </TouchableOpacity>
       </SafeAreaView>
 
       {/* ======== SHEETS ======== */}
@@ -677,7 +660,7 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  map: { flex: 1 },
+  map: { flex: 1, ...StyleSheet.absoluteFillObject },
 
   // User Marker
   markerContainer: {
@@ -705,72 +688,125 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // Header Overlay
-  headerOverlay: {
+  // ======== NEW: Top Overlay ========
+  topOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 12,
+    zIndex: 10,
   },
-  headerTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-  headerRight: {
+  topSingleRow: {
     flexDirection: "row",
     alignItems: "center",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-    gap: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    height: 44,
+  },
+  statusScrollView: {
     flex: 1,
+    marginLeft: 12,
+  },
+  statusScrollRow: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flexGrow: 1,
+    gap: 8,
   },
 
-  layerToggle: {
+  compactPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
-    marginRight: 8,
   },
-  layerIcon: { fontSize: 18, marginRight: 8 },
-  layerText: { fontSize: 14, fontWeight: "600" },
 
-  statusBadge: {
+  microChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
-    marginBottom: 4,
+    elevation: 3,
   },
-  statusIcon: { fontSize: 14, marginRight: 4 },
-  statusText: { fontSize: 12, fontWeight: "500" },
-
-  offlineChip: {
-    backgroundColor: "#EF4444",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginBottom: 4,
+  microChipText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFF",
   },
-  offlineText: { color: "#FFF", fontSize: 12, fontWeight: "600" },
 
-  fogStatsContainer: { marginHorizontal: 0 },
+  // Icon text chung
+  iconText: { fontSize: 14, marginRight: 4 },
+  pillText: { fontSize: 13, fontWeight: "700" },
+
+  fogStatsContainer: {
+    marginTop: 8,
+    marginHorizontal: 16,
+  },
+
+  // ======== NEW: Right Toolbar ========
+  rightToolbar: {
+    position: "absolute",
+    right: 16,
+    top: "45%",
+    transform: [{ translateY: -50 }],
+    alignItems: "center",
+    gap: 16,
+    zIndex: 10,
+  },
+  actionBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  actionIcon: { fontSize: 20 },
+
+  // ======== NEW: Bottom FAB ========
+  bottomOverlay: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 30 : 40,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 10,
+  },
+  createFab: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 32,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  createIcon: { fontSize: 20, marginRight: 8 },
+  createLabel: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
 
   // Fog Anim
   clearAnimContainer: {
@@ -781,70 +817,4 @@ const styles = StyleSheet.create({
     marginTop: -50,
     zIndex: 100,
   },
-
-  // Info Chips
-  infoChipRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 10,
-    marginBottom: 14,
-  },
-  infoChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  infoChipIcon: { fontSize: 13, marginRight: 6 },
-  infoChipText: { fontSize: 12, fontWeight: "600", letterSpacing: 0.3 },
-
-  // Bottom Controls
-  bottomControls: {
-    position: "absolute",
-    bottom: 0,
-    left: 16,
-    right: 16,
-    paddingBottom: Platform.OS === "ios" ? 10 : 20,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
-  },
-  actionBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  actionIcon: { fontSize: 22 },
-  createBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  createIcon: { fontSize: 18, marginRight: 8 },
-  createLabel: { color: "#FFF", fontSize: 15, fontWeight: "700" },
 });

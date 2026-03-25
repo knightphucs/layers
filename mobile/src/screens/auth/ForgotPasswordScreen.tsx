@@ -1,8 +1,4 @@
-// ===========================================
-// LAYERS Forgot Password Screen
-// ===========================================
-
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,9 +7,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView,
+  Animated,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+
 import { AuthStackParamList } from "../../types";
 import { useAuthStore } from "../../store/authStore";
 import { authService, getErrorMessage, isNetworkError } from "../../services";
@@ -33,6 +34,37 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   const { layer } = useAuthStore();
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
 
+  // -----------------------------------------------------------------
+  // Animation setup: Snappy "Pop & Rest" Logo
+  // -----------------------------------------------------------------
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(progress, {
+          toValue: 0,
+          duration: 1200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [progress]);
+
+  const Y1 = progress.interpolate({ inputRange: [0, 1], outputRange: [8, 16] });
+  const Y2 = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
+  const Y3 = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-8, -16],
+  });
+
   const validate = (): boolean => {
     if (!email.trim()) {
       setError("Email is required");
@@ -45,7 +77,6 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     return true;
   };
 
-  // Handle submit - REAL API CALL! 🚀
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -55,10 +86,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     try {
       await authService.requestPasswordReset(email.trim().toLowerCase());
       setSent(true);
-      console.log("✅ Password reset email sent!");
     } catch (err: any) {
-      console.error("Password reset error:", err);
-
       if (isNetworkError(err)) {
         Alert.alert(
           "Connection Error",
@@ -66,11 +94,8 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           [{ text: "OK" }],
         );
       } else {
-        // Note: For security, many backends return success even if email doesn't exist
-        // We'll show success anyway to not leak information about registered emails
+        // For security, many backends return success even if email doesn't exist
         const message = getErrorMessage(err);
-
-        // If it's a "not found" error, still show success for security
         if (err.response?.status === 404) {
           setSent(true);
         } else {
@@ -82,7 +107,6 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     }
   };
 
-  // Handle resend
   const handleResend = async () => {
     setSent(false);
     setLoading(true);
@@ -95,28 +119,34 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         "We've sent another reset link to your email.",
       );
     } catch (err) {
-      // Still show sent state for security
       setSent(true);
     } finally {
       setLoading(false);
     }
   };
 
-  // Success state
+  // -----------------------------------------------------------------
+  // Success State View
+  // -----------------------------------------------------------------
   if (sent) {
     return (
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.background }]}
       >
-        <View style={styles.content}>
+        <ScrollView contentContainerStyle={styles.scroll}>
           <Card variant="elevated" style={styles.successCard}>
-            <Text style={styles.successIcon}>📧</Text>
+            <Ionicons
+              name="mail-unread-outline"
+              size={64}
+              color={colors.primary}
+              style={styles.successIcon}
+            />
             <Text style={[styles.successTitle, { color: colors.text }]}>
               Check your email
             </Text>
             <Text style={[styles.successText, { color: colors.textSecondary }]}>
               If an account exists for{"\n"}
-              <Text style={{ fontWeight: "600", color: colors.text }}>
+              <Text style={{ fontWeight: "700", color: colors.text }}>
                 {email}
               </Text>
               {"\n"}you'll receive a password reset link.
@@ -126,7 +156,6 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               <Button
                 title="Back to Login"
                 onPress={() => navigation.navigate("Login")}
-                icon="←"
               />
             </View>
           </Card>
@@ -134,27 +163,42 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           <Text style={[styles.resendText, { color: colors.textSecondary }]}>
             Didn't receive the email?{" "}
             <Text
-              style={{ color: colors.primary, fontWeight: "500" }}
+              style={{ color: colors.primary, fontWeight: "700" }}
               onPress={handleResend}
             >
               Resend
             </Text>
           </Text>
 
-          <View style={styles.helpSection}>
-            <Text style={[styles.helpTitle, { color: colors.text }]}>
-              📌 Check these first:
-            </Text>
+          <View
+            style={[
+              styles.helpSection,
+              { backgroundColor: colors.border + "40" },
+            ]}
+          >
+            <View style={styles.helpHeaderRow}>
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color={colors.text}
+              />
+              <Text style={[styles.helpTitle, { color: colors.text }]}>
+                Check these first:
+              </Text>
+            </View>
             <Text style={[styles.helpText, { color: colors.textSecondary }]}>
-              • Check your spam/junk folder{"\n"}• Make sure you entered the
-              correct email{"\n"}• The link expires in 1 hour
+              • Check your spam or junk folder{"\n"}• Make sure you entered the
+              correct email{"\n"}• The reset link expires in 1 hour
             </Text>
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
+  // -----------------------------------------------------------------
+  // Default Input View
+  // -----------------------------------------------------------------
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -163,26 +207,81 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboard}
       >
-        <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Back Button */}
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
             disabled={loading}
           >
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
             <Text style={[styles.backText, { color: colors.primary }]}>
-              ← Back
+              Back
             </Text>
           </TouchableOpacity>
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.logo}>🔑</Text>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Reset Password
-            </Text>
+            <View
+              style={[
+                styles.logoContainer,
+                { backgroundColor: colors.primary + "15" },
+              ]}
+            >
+              <Animated.View
+                style={[
+                  styles.customLayer,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.background,
+                    opacity: 0.3,
+                    transform: [
+                      { translateY: Y1 },
+                      { rotateX: "65deg" },
+                      { rotateZ: "45deg" },
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.customLayer,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.background,
+                    opacity: 0.7,
+                    transform: [
+                      { translateY: Y2 },
+                      { rotateX: "65deg" },
+                      { rotateZ: "45deg" },
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.customLayer,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.background,
+                    opacity: 1.0,
+                    transform: [
+                      { translateY: Y3 },
+                      { rotateX: "65deg" },
+                      { rotateZ: "45deg" },
+                    ],
+                  },
+                ]}
+              />
+            </View>
+
+            <Text style={[styles.title, { color: colors.text }]}>RECOVERY</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Enter your email and we'll send you a link to reset your password
+              Enter your email to receive a reset link
             </Text>
           </View>
 
@@ -200,122 +299,128 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
-              leftIcon="📧"
+              leftIcon={
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              }
               editable={!loading}
             />
 
-            <Button
-              title="Send Reset Link"
-              onPress={handleSubmit}
-              loading={loading}
-              icon="✉️"
-            />
+            <View style={styles.buttonContainer}>
+              <Button
+                title="Send Reset Link"
+                onPress={handleSubmit}
+                loading={loading}
+              />
+            </View>
           </View>
 
           {/* Help */}
           <Card variant="outlined" style={styles.helpCard}>
-            <Text style={[styles.helpTitle, { color: colors.text }]}>
-              💡 Need help?
-            </Text>
+            <View style={styles.helpHeaderRow}>
+              <Ionicons
+                name="help-buoy-outline"
+                size={20}
+                color={colors.text}
+              />
+              <Text style={[styles.helpTitle, { color: colors.text }]}>
+                Need help?
+              </Text>
+            </View>
             <Text style={[styles.helpText, { color: colors.textSecondary }]}>
               If you're having trouble accessing your account, please contact
               support at{" "}
-              <Text style={{ color: colors.primary }}>support@layers.app</Text>
+              <Text style={{ color: colors.primary, fontWeight: "600" }}>
+                support@layers.app
+              </Text>
             </Text>
           </Card>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboard: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
+  container: { flex: 1 },
+  keyboard: { flex: 1 },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 28, // Matched Login
+    paddingBottom: 40,
+    justifyContent: "center",
   },
   backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
     marginTop: 16,
     marginBottom: 24,
+    paddingVertical: 8,
+    paddingRight: 16,
+    gap: 4,
   },
-  backText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  header: {
+  backText: { fontSize: 16, fontWeight: "600" },
+  header: { alignItems: "center", marginBottom: 40 },
+  logoContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 28,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: 24,
+    position: "relative",
   },
-  logo: {
-    fontSize: 56,
-    marginBottom: 16,
+  customLayer: {
+    position: "absolute",
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    borderWidth: 2.5,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 12,
+  title: { fontSize: 32, fontWeight: "800", letterSpacing: 2, marginBottom: 8 }, // Matched Login
+  subtitle: { fontSize: 16, textAlign: "center", opacity: 0.8 }, // Matched Login
+  form: { marginBottom: 32 },
+  buttonContainer: {
+    marginTop: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4, // Matched Login
   },
-  subtitle: {
-    fontSize: 15,
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 20,
-  },
-  form: {
-    marginBottom: 32,
-  },
-  helpCard: {
-    marginTop: "auto",
-    marginBottom: 40,
-  },
-  helpTitle: {
-    fontSize: 15,
-    fontWeight: "600",
+  helpCard: { marginTop: "auto", marginBottom: 20 },
+  helpHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
+    gap: 8,
   },
-  helpText: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
+  helpTitle: { fontSize: 16, fontWeight: "700" },
+  helpText: { fontSize: 14, lineHeight: 22 },
+
   // Success state styles
   successCard: {
     alignItems: "center",
-    marginTop: 80,
+    marginTop: 60,
     padding: 32,
   },
-  successIcon: {
-    fontSize: 64,
-    marginBottom: 24,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 12,
-  },
+  successIcon: { marginBottom: 24 },
+  successTitle: { fontSize: 28, fontWeight: "800", marginBottom: 12 },
   successText: {
-    fontSize: 15,
+    fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 32,
   },
-  successButtons: {
-    width: "100%",
-  },
-  resendText: {
-    textAlign: "center",
-    marginTop: 24,
-    fontSize: 14,
-  },
+  successButtons: { width: "100%", marginTop: 8 },
+  resendText: { textAlign: "center", marginTop: 24, fontSize: 15 },
   helpSection: {
-    marginTop: 32,
-    padding: 16,
-    backgroundColor: "rgba(0,0,0,0.03)",
-    borderRadius: 12,
+    marginTop: 40,
+    padding: 20,
+    borderRadius: 16,
   },
 });
