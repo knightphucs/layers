@@ -21,8 +21,8 @@ interface InputProps extends TextInputProps {
   error?: string;
   hint?: string;
   containerStyle?: ViewStyle;
-  leftIcon?: string;
-  rightIcon?: string;
+  leftIcon?: string | React.ReactNode;
+  rightIcon?: string | React.ReactNode;
   onRightIconPress?: () => void;
 }
 
@@ -75,16 +75,23 @@ export default function Input({
           error && styles.inputError,
         ]}
       >
-        {/* Left Icon */}
-        {leftIcon && <Text style={styles.leftIcon}>{leftIcon}</Text>}
+        {/* Left Icon Rendering */}
+        {leftIcon && (
+          <View style={styles.leftIconWrapper}>
+            {typeof leftIcon === "string" ? (
+              <Text style={styles.iconText}>{leftIcon}</Text>
+            ) : (
+              leftIcon
+            )}
+          </View>
+        )}
 
         {/* Text Input */}
         <TextInput
           style={[
             styles.input,
             { color: colors.text },
-            leftIcon && styles.inputWithLeftIcon,
-            rightIcon && styles.inputWithRightIcon,
+            !leftIcon && { paddingLeft: 16 }, // Adjust padding if no icon
           ]}
           placeholderTextColor={colors.textSecondary}
           onFocus={handleFocus}
@@ -92,13 +99,18 @@ export default function Input({
           {...props}
         />
 
-        {/* Right Icon */}
+        {/* Right Icon Rendering */}
         {rightIcon && (
           <TouchableOpacity
             onPress={onRightIconPress}
             style={styles.rightIconButton}
+            activeOpacity={0.7}
           >
-            <Text style={styles.rightIcon}>{rightIcon}</Text>
+            {typeof rightIcon === "string" ? (
+              <Text style={styles.iconText}>{rightIcon}</Text>
+            ) : (
+              rightIcon
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -149,20 +161,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
   },
-  inputWithLeftIcon: {
-    paddingLeft: 8,
-  },
-  inputWithRightIcon: {
-    paddingRight: 8,
-  },
-  leftIcon: {
-    fontSize: 20,
+  leftIconWrapper: {
     paddingLeft: 16,
+    paddingRight: 8,
+    justifyContent: "center",
   },
   rightIconButton: {
     padding: 12,
+    justifyContent: "center",
   },
-  rightIcon: {
+  iconText: {
     fontSize: 20,
   },
   errorContainer: {

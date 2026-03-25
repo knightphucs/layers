@@ -8,14 +8,14 @@ A location-based social network with AR and gamification. Users discover and lea
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Mobile | React Native + Expo SDK 54 |
-| Backend | Python FastAPI (async) |
-| Database | PostgreSQL 16 + PostGIS |
-| Cache / Queue | Redis + Celery |
-| File Storage | MinIO (S3-compatible) |
-| Auth | JWT (30min access / 7-day refresh) |
+| Layer         | Technology                         |
+| ------------- | ---------------------------------- |
+| Mobile        | React Native + Expo SDK 54         |
+| Backend       | Python FastAPI (async)             |
+| Database      | PostgreSQL 16 + PostGIS            |
+| Cache / Queue | Redis + Celery                     |
+| File Storage  | MinIO (S3-compatible)              |
+| Auth          | JWT (30min access / 7-day refresh) |
 
 ---
 
@@ -109,17 +109,21 @@ layers_project/
 ## Key Concepts
 
 ### Artifact Types
+
 `LETTER` · `VOICE` · `PHOTO` · `PAPER_PLANE` · `VOUCHER` · `TIME_CAPSULE` · `NOTEBOOK`
 
 ### Visibility Modes
+
 - **PUBLIC** — anyone nearby can see it
 - **TARGETED** — sent to a specific user
 - **PASSCODE** — requires a secret code to unlock
 
 ### Geo-Lock
+
 Artifacts require the user to be **within 50 m** of the location to open them (`GEO_LOCK_RADIUS=50`).
 
 ### Fog of War
+
 The map starts fully covered. As users walk around, they reveal explored areas in ~100 m × 100 m chunks. The client batches GPS points every 30 s and sends them to `POST /explore/batch`. Grid math at Ho Chi Minh City latitude:
 
 ```
@@ -128,6 +132,7 @@ chunk_y = int(latitude  / 0.0009°)     # ~100m latitude
 ```
 
 ### Anti-Cheat
+
 - Mock GPS detection
 - Speed check: > 5 km/s flags as suspicious
 - Rate limit: 3 location drops per day
@@ -136,18 +141,18 @@ chunk_y = int(latitude  / 0.0009°)     # ~100m latitude
 
 ## 10-Week Roadmap
 
-| Week | Phase | Focus |
-|------|-------|-------|
-| 1 | Foundation | Backend auth, DB schema, JWT, tests ✅ |
-| 2 | Foundation | React Native + Expo, navigation, map |
-| 3 | Geo | Location model, artifact APIs, Fog of War backend |
-| 4 | Geo | Map markers, fog overlay, artifact creation/viewing |
-| 5 | Social | Memory types (voice/photo), slow mail, paper planes |
-| 6 | Social | Connections, real-time WebSocket chat, campfire rooms |
-| 7 | Gamification | XP/levels, daily missions, badges, leaderboards |
-| 8 | Moderation | AI content moderation, reports, admin panel, push notifs |
-| 9 | Polish | AR garden, Shadow layer effects, onboarding flow |
-| 10 | Launch | App Store prep, beta, launch |
+| Week | Phase        | Focus                                                    |
+| ---- | ------------ | -------------------------------------------------------- |
+| 1    | Foundation   | Backend auth, DB schema, JWT, tests                      |
+| 2    | Foundation   | React Native + Expo, navigation, map                     |
+| 3    | Geo          | Location model, artifact APIs, Fog of War backend        |
+| 4    | Geo          | Map markers, fog overlay, artifact creation/viewing      |
+| 5    | Social       | Memory types (voice/photo), slow mail, paper planes      |
+| 6    | Social       | Connections, real-time WebSocket chat, campfire rooms    |
+| 7    | Gamification | XP/levels, daily missions, badges, leaderboards          |
+| 8    | Moderation   | AI content moderation, reports, admin panel, push notifs |
+| 9    | Polish       | AR garden, Shadow layer effects, onboarding flow         |
+| 10   | Launch       | App Store prep, beta, launch                             |
 
 ### Current Status — Week 3 (Day 5)
 
@@ -195,5 +200,5 @@ docker exec -it layers_postgres psql -U layers_user -d layers_db \
 
 ---
 
-*Stack: FastAPI · PostgreSQL/PostGIS · Redis · React Native · Expo*
-*Founder: Kazyy*
+_Stack: FastAPI · PostgreSQL/PostGIS · Redis · React Native · Expo_
+_Founder: Kazyy_

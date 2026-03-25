@@ -690,6 +690,7 @@ class ArtifactService:
                 "view_count": artifact.view_count,
                 "reply_count": artifact.reply_count,
                 "save_count": artifact.save_count,
+                "payload": artifact.payload,
                 "created_at": artifact.created_at,
                 "is_locked": False,  # Own artifacts never locked
                 "preview_text": artifact.payload.get("text", "")[:50] if artifact.payload else None,

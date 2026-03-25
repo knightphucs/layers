@@ -66,8 +66,9 @@ export interface Location {
 // ============ ARTIFACT ============
 export type ArtifactContentType =
   | "LETTER"
+  | "VOICE"
+  | "PHOTO"
   | "VOUCHER"
-  | "AUDIO"
   | "NOTEBOOK"
   | "TIME_CAPSULE"
   | "PAPER_PLANE";
@@ -95,6 +96,16 @@ export interface Artifact {
   location?: Location;
   user?: Pick<User, "id" | "username" | "avatar_url">;
   distance_meters?: number; // Calculated by PostGIS
+  layer?: Layer; // Joined from location
+  creator_username?: string; // Joined from user
+  creator_avatar?: string; // Joined from user
+
+  // Computed/API fields
+  unlock_at?: string | null; // Flattened from unlock_conditions.unlock_date
+  view_count?: number;
+  reply_count?: number;
+  is_locked?: boolean; // True if geo-locked (distance > GEO_LOCK_RADIUS)
+  lock_reason?: string; // e.g. "distance"
 }
 
 // ============ CONNECTION ============
@@ -159,6 +170,7 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Map: undefined;
+  Inbox: undefined;
   Explore: undefined;
   Profile: undefined;
 };

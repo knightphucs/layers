@@ -29,6 +29,7 @@ export function useLocation(options: UseLocationOptions = {}) {
     isLoading,
     error,
     isWatching,
+    accuracy,
     requestPermission,
     getCurrentLocation,
     watchLocation,
@@ -170,6 +171,7 @@ export function useLocation(options: UseLocationOptions = {}) {
     isLoading,
     error,
     isWatching,
+    accuracy,
 
     // Computed
     hasPermission: permissionStatus === "granted",

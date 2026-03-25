@@ -1,8 +1,8 @@
 // ===========================================
-// LAYERS Login Screen
+// src/screens/auth/LoginScreen.tsx
 // ===========================================
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,9 +12,13 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Animated,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons, AntDesign } from "@expo/vector-icons";
+
 import { AuthStackParamList } from "../../types";
 import { useAuthStore } from "../../store/authStore";
 import { authService, getErrorMessage, isNetworkError } from "../../services";
@@ -26,7 +30,6 @@ type Props = {
 };
 
 export default function LoginScreen({ navigation }: Props) {
-  // Form state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -35,68 +38,78 @@ export default function LoginScreen({ navigation }: Props) {
     {},
   );
 
-  // Store
   const { login, layer } = useAuthStore();
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
 
-  // Validation
+  // -----------------------------------------------------------------
+  // 🚀 Animation setup: Snappy "Pop & Rest" Logo
+  // -----------------------------------------------------------------
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(progress, {
+          toValue: 0,
+          duration: 1200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [progress]);
+
+  // Tie the physical layers to the 0 -> 1 master progress
+  const Y1 = progress.interpolate({ inputRange: [0, 1], outputRange: [8, 16] });
+  const Y2 = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
+  const Y3 = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-8, -16],
+  }); // Top pushes up
+
+  // Validation & Login Logic
   const validate = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
-
-    if (!email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    if (!email.trim()) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(email))
       newErrors.email = "Please enter a valid email";
-    }
 
-    if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 8) {
+    if (!password) newErrors.password = "Password is required";
+    else if (password.length < 8)
       newErrors.password = "Password must be at least 8 characters";
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle login - REAL API CALL! 🚀
   const handleLogin = async () => {
     if (!validate()) return;
-
     setLoading(true);
-
     try {
-      // Call real API
       const response = await authService.login({
         email: email.trim().toLowerCase(),
         password,
       });
-
-      // Store user and tokens
       await login(response.user, {
         access_token: response.access_token,
         refresh_token: response.refresh_token,
         token_type: response.token_type,
       });
-
-      // Navigation happens automatically via RootNavigator
-      console.log("✅ Login successful!");
     } catch (error: any) {
-      console.error("Login error:", error);
-
-      // Handle different error types
       if (isNetworkError(error)) {
         Alert.alert(
           "Connection Error",
-          "Unable to connect to server. Please check:\n\n" +
-            "1. Your backend is running\n" +
-            "2. You updated the API_URL in config.ts\n" +
-            "3. Phone and computer are on same WiFi",
+          "Unable to connect to server. Check your connection.",
           [{ text: "OK" }],
         );
       } else {
-        const message = getErrorMessage(error);
-        Alert.alert("Login Failed", message);
+        Alert.alert("Login Failed", getErrorMessage(error));
       }
     } finally {
       setLoading(false);
@@ -118,7 +131,64 @@ export default function LoginScreen({ navigation }: Props) {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.logo}>🌆</Text>
+            <View
+              style={[
+                styles.logoContainer,
+                { backgroundColor: colors.primary + "15" },
+              ]}
+            >
+              {/* BOTTOM LAYER */}
+              <Animated.View
+                style={[
+                  styles.customLayer,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.background,
+                    opacity: 0.3,
+                    transform: [
+                      { translateY: Y1 },
+                      { rotateX: "65deg" },
+                      { rotateZ: "45deg" },
+                    ],
+                  },
+                ]}
+              />
+
+              {/* MIDDLE LAYER */}
+              <Animated.View
+                style={[
+                  styles.customLayer,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.background,
+                    opacity: 0.7,
+                    transform: [
+                      { translateY: Y2 },
+                      { rotateX: "65deg" },
+                      { rotateZ: "45deg" },
+                    ],
+                  },
+                ]}
+              />
+
+              {/* TOP LAYER */}
+              <Animated.View
+                style={[
+                  styles.customLayer,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.background,
+                    opacity: 1.0,
+                    transform: [
+                      { translateY: Y3 },
+                      { rotateX: "65deg" },
+                      { rotateZ: "45deg" },
+                    ],
+                  },
+                ]}
+              />
+            </View>
+
             <Text style={[styles.title, { color: colors.text }]}>LAYERS</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               See the hidden layers of your city
@@ -127,88 +197,94 @@ export default function LoginScreen({ navigation }: Props) {
 
           {/* Form */}
           <View style={styles.form}>
-            <Input
-              label="Email"
-              placeholder="your@email.com"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (errors.email) setErrors({ ...errors, email: undefined });
-              }}
-              error={errors.email}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              leftIcon="📧"
-              editable={!loading}
-            />
+            <View style={styles.inputGroup}>
+              <Input
+                label="Email"
+                placeholder="your@email.com"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) setErrors({ ...errors, email: undefined });
+                }}
+                error={errors.email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                leftIcon={
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                }
+                editable={!loading}
+              />
+              <Input
+                label="Password"
+                placeholder="••••••••"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password)
+                    setErrors({ ...errors, password: undefined });
+                }}
+                error={errors.password}
+                secureTextEntry={!showPassword}
+                autoComplete="password"
+                leftIcon={
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                }
+                rightIcon={
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                }
+                onRightIconPress={() => setShowPassword(!showPassword)}
+                editable={!loading}
+              />
+            </View>
 
-            <Input
-              label="Password"
-              placeholder="••••••••"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errors.password)
-                  setErrors({ ...errors, password: undefined });
-              }}
-              error={errors.password}
-              secureTextEntry={!showPassword}
-              autoComplete="password"
-              leftIcon="🔒"
-              rightIcon={showPassword ? "👁️" : "👁️‍🗨️"}
-              onRightIconPress={() => setShowPassword(!showPassword)}
-              editable={!loading}
-            />
-
-            {/* Forgot Password */}
             <TouchableOpacity
               onPress={() => navigation.navigate("ForgotPassword")}
               style={styles.forgotLink}
               disabled={loading}
             >
-              <Text style={[styles.forgotText, { color: colors.primary }]}>
+              <Text
+                style={[styles.forgotText, { color: colors.textSecondary }]}
+              >
                 Forgot password?
               </Text>
             </TouchableOpacity>
 
-            {/* Login Button */}
-            <Button
-              title="Sign In"
-              onPress={handleLogin}
-              loading={loading}
-              icon="🚀"
-            />
+            <View style={styles.buttonContainer}>
+              <Button title="Sign In" onPress={handleLogin} loading={loading} />
+            </View>
 
-            {/* Divider */}
             <Divider text="or continue with" />
 
-            {/* Social Login (placeholder) */}
             <View style={styles.socialRow}>
               <Button
                 title="Google"
-                onPress={() =>
-                  Alert.alert(
-                    "Coming Soon",
-                    "Google login will be added in a future update!",
-                  )
-                }
+                onPress={() => Alert.alert("Coming Soon")}
                 variant="outline"
-                icon="🔷"
-                style={styles.socialButton}
+                icon={<AntDesign name="google" size={20} color={colors.text} />}
+                style={[styles.socialButton, { borderColor: colors.border }]}
+                textStyle={{ color: colors.text }}
                 disabled={loading}
               />
               <Button
                 title="Apple"
-                onPress={() =>
-                  Alert.alert(
-                    "Coming Soon",
-                    "Apple login will be added in a future update!",
-                  )
-                }
+                onPress={() => Alert.alert("Coming Soon")}
                 variant="outline"
-                icon="🍎"
-                style={styles.socialButton}
+                icon={<AntDesign name="apple" size={20} color={colors.text} />}
+                style={[styles.socialButton, { borderColor: colors.border }]}
+                textStyle={{ color: colors.text }}
                 disabled={loading}
               />
             </View>
@@ -222,23 +298,12 @@ export default function LoginScreen({ navigation }: Props) {
             <TouchableOpacity
               onPress={() => navigation.navigate("Register")}
               disabled={loading}
+              style={styles.signupTouchable}
             >
               <Text style={[styles.linkText, { color: colors.primary }]}>
                 Sign Up
               </Text>
             </TouchableOpacity>
-          </View>
-
-          {/* API Connected Badge */}
-          <View
-            style={[
-              styles.apiBadge,
-              { backgroundColor: colors.success + "20" },
-            ]}
-          >
-            <Text style={[styles.apiText, { color: colors.success }]}>
-              ✅ Day 3: Connected to FastAPI Backend!
-            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -247,75 +312,63 @@ export default function LoginScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboard: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  keyboard: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: 28,
+    paddingBottom: 40,
+    justifyContent: "center",
   },
-  header: {
+  header: { alignItems: "center", marginTop: 20, marginBottom: 48 },
+  logoContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 28,
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: 40,
-    marginBottom: 40,
-  },
-  logo: {
-    fontSize: 64,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: "bold",
-    letterSpacing: 4,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    textAlign: "center",
-  },
-  form: {
     marginBottom: 24,
+    position: "relative",
   },
+
+  // Adjusted customLayer to perfectly mimic the real icon
+  customLayer: {
+    position: "absolute",
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    borderWidth: 2.5,
+  },
+
+  title: { fontSize: 32, fontWeight: "800", letterSpacing: 2, marginBottom: 8 },
+  subtitle: { fontSize: 16, textAlign: "center", opacity: 0.8 },
+  form: { marginBottom: 16 },
+  inputGroup: { gap: 0 },
   forgotLink: {
     alignSelf: "flex-end",
-    marginBottom: 24,
     marginTop: -8,
+    marginBottom: 20,
+    paddingVertical: 8,
+    paddingLeft: 16,
   },
-  forgotText: {
-    fontSize: 14,
-    fontWeight: "500",
+  forgotText: { fontSize: 14, fontWeight: "600" },
+  buttonContainer: {
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  socialRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  socialButton: {
-    flex: 1,
-  },
+  socialRow: { flexDirection: "row", gap: 16, marginTop: 8 },
+  socialButton: { flex: 1 },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 24,
-  },
-  footerText: {
-    fontSize: 15,
-  },
-  linkText: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  apiBadge: {
-    marginTop: 32,
-    padding: 12,
-    borderRadius: 12,
     alignItems: "center",
+    marginTop: 16,
   },
-  apiText: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
+  footerText: { fontSize: 15 },
+  signupTouchable: { paddingVertical: 8, paddingHorizontal: 4 },
+  linkText: { fontSize: 15, fontWeight: "700" },
 });

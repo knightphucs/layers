@@ -5,6 +5,7 @@ export {
   isAuthError,
 } from "./api";
 export { authService } from "./auth";
+export { inboxService } from "./inbox";
 export type {
   LoginRequest,
   RegisterRequest,

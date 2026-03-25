@@ -100,7 +100,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.version, { color: colors.textSecondary }]}>
-          LAYERS v0.1.0 (Week 2 Dev Build)
+          Founded by @Kazyy - Version 1.0.0
         </Text>
       </ScrollView>
     </SafeAreaView>

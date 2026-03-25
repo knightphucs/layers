@@ -11,6 +11,7 @@ import {
   ViewStyle,
   TextStyle,
   View,
+  StyleProp,
 } from "react-native";
 import { Colors } from "../constants/colors";
 import { useAuthStore } from "../store/authStore";
@@ -25,11 +26,11 @@ interface ButtonProps {
   disabled?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  icon?: string;
+  icon?: string | React.ReactNode;
   iconPosition?: "left" | "right";
   fullWidth?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export default function Button({
@@ -125,9 +126,15 @@ export default function Button({
     }
 
     const iconElement = icon ? (
-      <Text style={[styles.icon, iconPosition === "right" && styles.iconRight]}>
-        {icon}
-      </Text>
+      <View
+        style={iconPosition === "right" ? styles.iconRight : styles.iconLeft}
+      >
+        {typeof icon === "string" ? (
+          <Text style={styles.iconText}>{icon}</Text>
+        ) : (
+          icon
+        )}
+      </View>
     ) : null;
 
     return (
@@ -183,8 +190,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginRight: 8,
   },
+  iconLeft: {
+    marginRight: 8,
+    marginLeft: 0,
+  },
   iconRight: {
     marginRight: 0,
     marginLeft: 8,
+  },
+  iconText: {
+    fontSize: 18,
   },
 });
