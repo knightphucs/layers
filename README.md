@@ -154,13 +154,13 @@ chunk_y = int(latitude  / 0.0009°)     # ~100m latitude
 | 9    | Polish       | AR garden, Shadow layer effects, onboarding flow         |
 | 10   | Launch       | App Store prep, beta, launch                             |
 
-### Current Status — Week 3 (Day 5)
+### Current Status — Week 5 (Day 1)
 
-- Backend auth, JWT, password reset — complete
-- PostgreSQL + PostGIS schema — complete
-- Location model + geo-spatial queries — complete
-- Anti-cheat columns + explored_chunks table — complete
-- Performance indexes (w3d5) — complete
+- Memory Inbox screen — complete
+- Category filters + infinite scroll + pull-to-refresh — complete
+- Sealed/opened letter cards + unread badge + stats bar — complete
+- Empty states for letters, replies, paper planes, and time capsules — complete
+- Social layer begins: users now have a place to receive letters, paper planes, and time capsules from strangers
 
 ---
 
