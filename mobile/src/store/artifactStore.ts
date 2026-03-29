@@ -17,8 +17,11 @@
  */
 
 import { create } from "zustand";
-import ArtifactApi from "../services/artifactApi";
-import ExploreApi, { ExplorationStats } from "../services/exploreApi";
+import { artifactService } from "../services/artifacts";
+import {
+  exploreServiceLegacy,
+  ExplorationStatsResponse,
+} from "../services/explore";
 import {
   ArtifactMarker,
   ArtifactDetail,
@@ -54,7 +57,7 @@ interface ArtifactState {
   createError: string | null;
 
   // ---- EXPLORATION / FOG OF WAR ----
-  explorationStats: ExplorationStats | null;
+  explorationStats: ExplorationStatsResponse | null;
   gpsBuffer: GpsPoint[];
   isExploring: boolean;
 
@@ -139,7 +142,7 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
 
     set({ isLoadingNearby: true, nearbyError: null });
 
-    const result = await ArtifactApi.getNearby(lat, lng, radius, layer);
+    const result = await artifactService.getNearby(lat, lng, radius, layer);
 
     if (result.success && result.data) {
       set({
@@ -170,7 +173,7 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
   fetchDetail: async (artifactId, lat, lng) => {
     set({ isLoadingDetail: true, detailError: null });
 
-    const result = await ArtifactApi.getDetail(artifactId, lat, lng);
+    const result = await artifactService.getDetail(artifactId, lat, lng);
 
     if (result.success && result.data) {
       set({
@@ -192,7 +195,7 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
   createArtifact: async (data) => {
     set({ isCreating: true, createError: null });
 
-    const result = await ArtifactApi.create(data);
+    const result = await artifactService.create(data);
 
     if (result.success) {
       // Invalidate nearby cache so new artifact appears
@@ -217,7 +220,7 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
   // ============================================================
 
   unlockArtifact: async (artifactId, passcode, lat, lng) => {
-    const result = await ArtifactApi.unlock(artifactId, passcode, lat, lng);
+    const result = await artifactService.unlock(artifactId, passcode, lat, lng);
     if (result.success && result.data) {
       set({ artifactDetail: result.data });
       return true;
@@ -230,7 +233,7 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
   // ============================================================
 
   collectArtifact: async (artifactId) => {
-    const result = await ArtifactApi.collect(artifactId);
+    const result = await artifactService.collect(artifactId);
     if (result.success) {
       // Update the artifact detail to show collected
       const detail = get().artifactDetail;
@@ -267,7 +270,7 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
     const points = [...gpsBuffer];
     set({ gpsBuffer: [] }); // Clear immediately
 
-    const result = await ExploreApi.sendBatch(points);
+    const result = await exploreServiceLegacy.sendBatch(points);
 
     set({ isExploring: false });
 
@@ -278,7 +281,7 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
   },
 
   fetchExplorationStats: async () => {
-    const result = await ExploreApi.getStats();
+    const result = await exploreServiceLegacy.getStats();
     if (result.success && result.data) {
       set({ explorationStats: result.data });
     }

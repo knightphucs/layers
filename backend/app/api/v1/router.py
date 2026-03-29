@@ -50,6 +50,6 @@ async def api_info():
             "social": "🚧 Coming Week 5",
             "commerce": "🚧 Coming Week 7",
         },
-        "endpoints_total": 35,
-        "test_files": 6,
+        "endpoints_total": 38,
+        "test_files": 7,
     }

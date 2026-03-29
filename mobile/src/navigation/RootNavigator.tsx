@@ -9,9 +9,11 @@ import { useAuthStore } from "../store/authStore";
 import AuthNavigator from "./AuthNavigator";
 import MainNavigator from "./MainNavigator";
 import { Colors } from "../constants/colors";
+import { useNotifications } from "../hooks/useNotifications";
 
 export default function RootNavigator() {
   const { isAuthenticated, isLoading, loadStoredAuth, layer } = useAuthStore();
+  const { expoPushToken } = useNotifications();
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
 
   // Load stored auth on app start

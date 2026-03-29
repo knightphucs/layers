@@ -108,7 +108,11 @@ async def batch_explore(
     current_user: User = Depends(get_current_user),
 ):
     first = data.coordinates[0]
-    await validate_location_update(current_user.id, first["lat"], first["lng"], db)
+    lat = first.get("lat") or first.get("latitude")
+    lng = first.get("lng") or first.get("longitude")
+    if lat is None or lng is None:
+        raise HTTPException(status_code=422, detail="Each coordinate needs lat/lng or latitude/longitude")
+    await validate_location_update(current_user.id, lat, lng, db)
     try:
         return await ExplorationService.batch_explore(
             db=db,

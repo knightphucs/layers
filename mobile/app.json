@@ -27,7 +27,20 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#8B5CF6"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "29877238-3221-4b11-b8bf-66a4ac280c06"
+      }
+    },
+    "owner": "kazyy"
   }
 }
