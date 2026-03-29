@@ -27,10 +27,10 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
-  exploreApi,
+  exploreService,
   ExploredChunkData,
   ViewportChunksResponse,
-} from "../services/exploreApi";
+} from "../services/explore";
 
 // ============================================================
 // TYPES
@@ -146,7 +146,7 @@ export function useFogOfWar() {
 
         const radius = viewportToRadius(region);
         const response: ViewportChunksResponse =
-          await exploreApi.getViewportChunks(
+          await exploreService.getViewportChunks(
             region.latitude,
             region.longitude,
             radius,
@@ -230,7 +230,7 @@ export function useFogOfWar() {
 
   const fetchTotalStats = useCallback(async () => {
     try {
-      const stats = await exploreApi.getStats();
+      const stats = await exploreService.getStats();
       setTotalStats({
         totalChunksAllTime: stats.total_chunks_explored ?? 0,
         totalAreaKm2: stats.total_area_km2 ?? 0,

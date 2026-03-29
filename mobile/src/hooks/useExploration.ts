@@ -17,7 +17,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import { useArtifactStore } from "../store/artifactStore";
-import { exploreApi, BatchExploreResponse } from "../services/exploreApi";
+import { exploreService, BatchExploreResponse } from "../services/explore";
 
 // ============================================================
 // CONSTANTS
@@ -98,7 +98,7 @@ export function useExploration(
     setBufferSize(0);
 
     try {
-      const result = await exploreApi.sendBatch(points);
+      const result = await exploreService.sendBatch(points);
       setLastFlushResult(result);
 
       // Notify fog system if new chunks discovered

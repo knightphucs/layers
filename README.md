@@ -154,7 +154,7 @@ chunk_y = int(latitude  / 0.0009°)     # ~100m latitude
 | 9    | Polish       | AR garden, Shadow layer effects, onboarding flow         |
 | 10   | Launch       | App Store prep, beta, launch                             |
 
-### Current Status — Week 5 (Day 1)
+### Current Status — Week 5
 
 - Memory Inbox screen — complete
 - Category filters + infinite scroll + pull-to-refresh — complete

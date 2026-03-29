@@ -18,7 +18,7 @@
 
 import { useState, useCallback } from "react";
 import { useLocationStore } from "../store/locationStore";
-import ArtifactApi from "../services/artifactApi";
+import { artifactService } from "../services/artifacts";
 import { ArtifactDetailData } from "../components/detail/ArtifactDetailSheet";
 
 const TARGETED_LOCK_MESSAGE = "This artifact is for someone else";
@@ -66,7 +66,7 @@ export function useArtifactDetail() {
       setDetailData(null);
 
       try {
-        const result = await ArtifactApi.getDetail(
+        const result = await artifactService.getDetail(
           artifactId,
           location?.latitude,
           location?.longitude,
@@ -113,7 +113,7 @@ export function useArtifactDetail() {
       if (!currentArtifactId || !location) return false;
 
       try {
-        const result = await ArtifactApi.unlock(
+        const result = await artifactService.unlock(
           currentArtifactId,
           passcode,
           location.latitude,
@@ -162,7 +162,7 @@ export function useArtifactDetail() {
       if (!currentArtifactId || !location) return;
 
       try {
-        const result = await ArtifactApi.reply(
+        const result = await artifactService.reply(
           currentArtifactId,
           content,
           location.latitude,

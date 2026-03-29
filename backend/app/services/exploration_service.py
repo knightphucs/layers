@@ -189,7 +189,11 @@ class ExplorationService:
         seen = set()
         values = []
         for coord in coordinates:
-            cx, cy = _calculate_chunk(coord["lat"], coord["lng"])
+            lat = coord.get("lat") or coord.get("latitude")
+            lng = coord.get("lng") or coord.get("longitude")
+            if lat is None or lng is None:
+                continue
+            cx, cy = _calculate_chunk(lat, lng)
             key = (cx, cy)
             if key not in seen:
                 seen.add(key)

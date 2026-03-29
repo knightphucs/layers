@@ -30,7 +30,7 @@ import { useAuthStore } from "../../store/authStore";
 import {
   ExploredChunkData,
   ChunkBounds,
-} from "../../services/exploreApi";
+} from "../../services/explore";
 
 interface Props {
   exploredChunks: ExploredChunkData[];
