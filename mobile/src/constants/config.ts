@@ -2,7 +2,15 @@
 import Constants from "expo-constants";
 
 // Auto-detect dev machine IP from Expo dev server
+// Optional override for stable LAN host across Expo restarts:
+// EXPO_PUBLIC_API_HOST=192.168.0.101
+const DEV_API_HOST = process.env.EXPO_PUBLIC_API_HOST || "192.168.0.101";
+
 const getDevApiUrl = (): string => {
+  if (DEV_API_HOST) {
+    return `http://${DEV_API_HOST}:8000/api/v1`;
+  }
+
   const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.0.102:8081"
   if (hostUri) {
     const host = hostUri.split(":")[0];

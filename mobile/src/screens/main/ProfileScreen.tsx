@@ -1,189 +1,370 @@
 // ===========================================
-// LAYERS Profile Screen (Placeholder)
+// LAYERS Profile Screen (Merged Version)
 // ===========================================
 
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../store/authStore";
 import { Colors } from "../../constants/colors";
+import { User } from "../../types";
+import { profileService, ProfileStats } from "../../services/profile";
+import { EditProfileModal, ProfileHeader, StatsGrid } from "../../components/profile";
+import NotificationPreferencesScreen from "./NotificationPreferencesScreen";
+
+// ============================================================
+// MENU ITEMS
+// ============================================================
+
+interface MenuItem {
+  key: string;
+  icon: string;
+  title: string;
+  description: string;
+  action: "navigate" | "toggle" | "danger";
+}
+
+const MENU_ITEMS: MenuItem[] = [
+  {
+    key: "edit",
+    icon: "✏️",
+    title: "Edit Profile",
+    description: "Change username, bio, and avatar",
+    action: "navigate",
+  },
+  {
+    key: "notifications",
+    icon: "🔔",
+    title: "Notifications",
+    description: "Push notification preferences",
+    action: "navigate",
+  },
+  {
+    key: "inventory",
+    icon: "📦",
+    title: "Inventory",
+    description: "Saved artifacts and vouchers",
+    action: "navigate",
+  },
+  {
+    key: "achievements",
+    icon: "🏆",
+    title: "Achievements",
+    description: "Badges and milestones",
+    action: "navigate",
+  },
+  {
+    key: "privacy",
+    icon: "🔒",
+    title: "Privacy & Safety",
+    description: "Block list, data export",
+    action: "navigate",
+  },
+  {
+    key: "logout",
+    icon: "🚪",
+    title: "Log Out",
+    description: "Sign out of LAYERS",
+    action: "danger",
+  },
+];
+
+// ============================================================
+// SCREEN
+// ============================================================
 
 export default function ProfileScreen() {
-  const { layer, user, logout } = useAuthStore();
+  const { layer, user, logout, updateUser } = useAuthStore();
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
 
-  const stats = [
-    { label: "XP", value: user?.xp || 0, emoji: "⭐" },
-    { label: "Level", value: user?.level || 1, emoji: "🎮" },
-    { label: "Rep", value: user?.reputation_score || 100, emoji: "💎" },
-  ];
+  // State
+  const [statsData, setStatsData] = useState<ProfileStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showNotificationPrefs, setShowNotificationPrefs] = useState(false);
 
-  const menuItems = [
-    { emoji: "📦", title: "Inventory", desc: "Your saved items" },
-    { emoji: "🏆", title: "Achievements", desc: "Badges & rewards" },
-    { emoji: "📊", title: "Statistics", desc: "Your journey" },
-    { emoji: "⚙️", title: "Settings", desc: "App preferences" },
-  ];
+  // ========================================================
+  // LOAD DATA
+  // ========================================================
+
+  const loadProfileData = useCallback(async () => {
+    try {
+      const [profileRes, statsRes] = await Promise.allSettled([
+        profileService.getProfile(),
+        profileService.getStats(),
+      ]);
+
+      if (profileRes.status === "fulfilled") {
+        updateUser(profileRes.value);
+      }
+
+      if (statsRes.status === "fulfilled") {
+        setStatsData(statsRes.value);
+      }
+    } catch (error) {
+      console.error("Failed to load profile data:", error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [updateUser]);
+
+  useEffect(() => {
+    loadProfileData();
+  }, [loadProfileData]);
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    loadProfileData();
+  }, [loadProfileData]);
+
+  // ========================================================
+  // MENU HANDLERS
+  // ========================================================
+
+  const handleMenuPress = useCallback(
+    (item: MenuItem) => {
+      switch (item.key) {
+        case "edit":
+          setShowEditModal(true);
+          break;
+        case "notifications":
+          setShowNotificationPrefs(true);
+          break;
+        case "inventory":
+          Alert.alert("📦 Inventory", "Coming in Week 7!", [{ text: "OK" }]);
+          break;
+        case "achievements":
+          Alert.alert("🏆 Achievements", "Coming in Week 7!", [{ text: "OK" }]);
+          break;
+        case "privacy":
+          Alert.alert("🔒 Privacy", "Coming in Week 8!", [{ text: "OK" }]);
+          break;
+        case "logout":
+          Alert.alert("Log Out", "Are you sure you want to log out?", [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Log Out",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await logout();
+                } catch (error) {
+                  console.error("Logout failed:", error);
+                }
+              },
+            },
+          ]);
+          break;
+      }
+    },
+    [logout],
+  );
+
+  // ========================================================
+  // PROFILE SAVED
+  // ========================================================
+
+  const handleProfileSaved = useCallback(
+    (updatedUser: User) => {
+      updateUser(updatedUser);
+    },
+    [updateUser],
+  );
+
+  // ========================================================
+  // NOTIFICATION PREFS VIEW
+  // ========================================================
+
+  if (showNotificationPrefs) {
+    return (
+      <NotificationPreferencesScreen
+        onBack={() => setShowNotificationPrefs(false)}
+      />
+    );
+  }
+
+  // ========================================================
+  // LOADING STATE
+  // ========================================================
+
+  if (isLoading && !user) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Loading profile...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ========================================================
+  // MAIN RENDER
+  // ========================================================
+
+  const currentUser: User = user || {
+    id: "",
+    email: "",
+    username: "anonymous",
+    xp: 0,
+    level: 1,
+    reputation_score: 100,
+    role: "USER" as const,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top"]}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
-        <View style={styles.header}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>
-              {user?.username?.[0]?.toUpperCase() || "?"}
-            </Text>
-          </View>
-          <Text style={[styles.username, { color: colors.text }]}>
-            @{user?.username || "anonymous"}
-          </Text>
-          <Text style={[styles.email, { color: colors.textSecondary }]}>
-            {user?.email || "No email"}
-          </Text>
-        </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
+        <ProfileHeader
+          user={currentUser}
+          onAvatarPress={() => setShowEditModal(true)}
+          onEditPress={() => setShowEditModal(true)}
+        />
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          {stats.map((stat, index) => (
-            <View
-              key={index}
-              style={[styles.statCard, { backgroundColor: colors.surface }]}
-            >
-              <Text style={styles.statEmoji}>{stat.emoji}</Text>
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {stat.value}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                {stat.label}
-              </Text>
-            </View>
-          ))}
-        </View>
+        {/* Stats Grid */}
+        {statsData && <StatsGrid stats={statsData} />}
 
         {/* Menu */}
-        <View style={styles.menu}>
-          {menuItems.map((item, index) => (
+        <View style={styles.menuContainer}>
+          {MENU_ITEMS.map((item) => (
             <TouchableOpacity
-              key={index}
-              style={[styles.menuItem, { backgroundColor: colors.surface }]}
+              key={item.key}
+              onPress={() => handleMenuPress(item)}
+              style={[
+                styles.menuItem,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border || "transparent",
+                },
+                item.action === "danger" && styles.menuItemDanger,
+              ]}
+              activeOpacity={0.7}
             >
-              <Text style={styles.menuEmoji}>{item.emoji}</Text>
+              <Text style={styles.menuIcon}>{item.icon}</Text>
               <View style={styles.menuContent}>
-                <Text style={[styles.menuTitle, { color: colors.text }]}>
+                <Text
+                  style={[
+                    styles.menuTitle,
+                    {
+                      color: item.action === "danger" ? "#EF4444" : colors.text,
+                    },
+                  ]}
+                >
                   {item.title}
                 </Text>
                 <Text
-                  style={[styles.menuDesc, { color: colors.textSecondary }]}
+                  style={[
+                    styles.menuDescription,
+                    { color: colors.textSecondary },
+                  ]}
                 >
-                  {item.desc}
+                  {item.description}
                 </Text>
               </View>
-              <Text style={[styles.menuArrow, { color: colors.textSecondary }]}>
-                →
-              </Text>
+              {item.action !== "danger" && (
+                <Text
+                  style={[styles.menuChevron, { color: colors.textSecondary }]}
+                >
+                  ›
+                </Text>
+              )}
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutText}>🚪 Sign Out</Text>
-        </TouchableOpacity>
-
+        {/* App version */}
         <Text style={[styles.version, { color: colors.textSecondary }]}>
-          Founded by @Kazyy - Version 1.0.0
+          LAYERS v1.0.0 — Founded by @Kazyy
         </Text>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      {showEditModal && (
+        <EditProfileModal
+          visible={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          user={currentUser}
+          onSaved={handleProfileSaved}
+        />
+      )}
     </SafeAreaView>
   );
 }
+
+// ============================================================
+// STYLES
+// ============================================================
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    alignItems: "center",
-    paddingTop: 24,
-    paddingBottom: 24,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  avatarText: {
-    fontSize: 40,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  username: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  email: {
-    fontSize: 14,
-  },
-  statsRow: {
-    flexDirection: "row",
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  statCard: {
+  loadingContainer: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 16,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    justifyContent: "center",
   },
-  statEmoji: {
-    fontSize: 24,
-    marginBottom: 8,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  statLabel: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  menu: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 12,
+  menuContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 8,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  menuEmoji: {
-    fontSize: 24,
-    marginRight: 16,
+  menuItemDanger: {
+    marginTop: 8,
+  },
+  menuIcon: {
+    fontSize: 22,
+    width: 32,
+    textAlign: "center",
   },
   menuContent: {
     flex: 1,
@@ -193,29 +374,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 2,
   },
-  menuDesc: {
+  menuDescription: {
     fontSize: 13,
+    marginTop: 2,
   },
-  menuArrow: {
-    fontSize: 18,
-  },
-  logoutButton: {
-    marginHorizontal: 24,
-    marginTop: 32,
-    padding: 16,
-    backgroundColor: Colors.light.error + "15",
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  logoutText: {
-    color: Colors.light.error,
-    fontSize: 16,
-    fontWeight: "600",
+  menuChevron: {
+    fontSize: 24,
+    fontWeight: "300",
   },
   version: {
     textAlign: "center",
-    marginTop: 24,
-    marginBottom: 100,
     fontSize: 12,
+    paddingVertical: 32,
+    marginBottom: 40,
   },
 });
