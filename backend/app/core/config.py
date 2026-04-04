@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     minio_secret_key: str = "layers_minio_secret"
     minio_bucket_name: str = "layers-files"
     minio_secure: bool = False
+    # Public base URL used in returned file URLs (must be reachable from the mobile device)
+    # Android emulator: http://10.0.2.2:9000 | Physical device: http://<your-machine-ip>:9000
+    minio_public_url: str = "http://localhost:9000"
     
     # Firebase
     firebase_credentials_path: Optional[str] = None

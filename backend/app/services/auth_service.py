@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 from typing import Optional
 import logging
+from urllib.parse import urlsplit, urlunsplit
 
 from app.models.user import User
 from app.schemas.auth import (
@@ -52,13 +53,37 @@ class AuthService:
     # ========================================================
 
     @staticmethod
+    def _normalize_avatar_url(avatar_url: Optional[str]) -> Optional[str]:
+        """
+        Normalize legacy localhost avatar URLs to configured public MinIO URL.
+        This keeps old DB rows working after MINIO_PUBLIC_URL changes.
+        """
+        if not avatar_url:
+            return avatar_url
+
+        try:
+            parsed = urlsplit(avatar_url)
+            if parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+                return avatar_url
+
+            public_base = urlsplit(settings.minio_public_url)
+            if not public_base.scheme or not public_base.netloc:
+                return avatar_url
+
+            return urlunsplit(
+                (public_base.scheme, public_base.netloc, parsed.path, parsed.query, parsed.fragment)
+            )
+        except Exception:
+            return avatar_url
+
+    @staticmethod
     def _build_user_response(user: User) -> UserResponse:
         """Build UserResponse from User model."""
         return UserResponse(
             id=str(user.id),
             username=user.username,
             email=user.email,
-            avatar_url=user.avatar_url,
+            avatar_url=AuthService._normalize_avatar_url(user.avatar_url),
             bio=user.bio,
             experience_points=user.experience_points,
             level=user.level,

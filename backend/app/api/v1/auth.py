@@ -3,7 +3,7 @@ LAYERS - Authentication API Routes
 Register, login, token refresh, password reset
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -27,6 +27,7 @@ from app.schemas.auth import (
     AuthResponse,
 )
 from app.services.auth_service import AuthService
+from app.core.storage import upload_avatar, ALLOWED_IMAGE_TYPES
 
 
 logger = logging.getLogger(__name__)
@@ -234,3 +235,32 @@ async def check_email_available(email: str, db: AsyncSession = Depends(get_db)):
 async def check_username_available(username: str, db: AsyncSession = Depends(get_db)):
     """Check if a username is available for registration."""
     return await AuthService.check_username_availability(db, username)
+
+
+@router.post("/avatar")
+async def upload_user_avatar(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a new avatar image. Stores in MinIO and updates the user profile."""
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported file type. Allowed: {', '.join(ALLOWED_IMAGE_TYPES)}",
+        )
+
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:  # 5 MB
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large. Maximum size is 5 MB.",
+        )
+
+    url = await upload_avatar(data, file.content_type)
+
+    user.avatar_url = url
+    await db.commit()
+
+    logger.info(f"Avatar updated for user: {user.username}")
+    return {"url": url}
