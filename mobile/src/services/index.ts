@@ -11,6 +11,8 @@ export { notificationService } from "./notifications";
 export { artifactService } from "./artifacts";
 export { exploreService } from "./explore";
 export { profileService } from "./profile";
+export { connectionService } from "./connections";
+export { timeCapsuleService, paperPlaneService } from "./planes_capsules";
 
 export type {
   LoginRequest,

@@ -46,7 +46,7 @@ def _ensure_bucket(client: Minio, bucket: str) -> None:
     client.set_bucket_policy(bucket, json.dumps(policy))
 
 
-def _upload_bytes(data: bytes, object_name: str, content_type: str) -> str:
+def _upload_bytes(data: bytes, object_name: str, content_type: str) -> None:
     """Synchronous upload — run in executor to avoid blocking the event loop."""
     client = _get_client()
     bucket = settings.minio_bucket_name
@@ -60,26 +60,45 @@ def _upload_bytes(data: bytes, object_name: str, content_type: str) -> str:
         content_type=content_type,
     )
 
-    return f"{settings.minio_public_url}/{bucket}/{object_name}"
+
+def _get_object_bytes(object_name: str) -> tuple[bytes, str]:
+    """Synchronous MinIO object read — run in executor."""
+    client = _get_client()
+    bucket = settings.minio_bucket_name
+    response = client.get_object(bucket, object_name)
+    try:
+        data = response.read()
+        content_type = response.headers.get("Content-Type", "application/octet-stream")
+    finally:
+        response.close()
+        response.release_conn()
+    return data, content_type
 
 
 async def upload_avatar(data: bytes, content_type: str) -> str:
     """
-    Upload avatar bytes to MinIO and return the public URL.
+    Upload avatar bytes to MinIO and return the object name.
 
     Args:
         data: Raw file bytes.
         content_type: MIME type (e.g. "image/jpeg").
 
     Returns:
-        Public URL of the uploaded file.
+        Object name within the bucket (e.g. "avatars/abc123.jpg").
+        The caller constructs the full URL based on the serving strategy.
     """
     ext = content_type.split("/")[-1].replace("jpeg", "jpg")
     object_name = f"avatars/{uuid.uuid4().hex}.{ext}"
 
-    loop = asyncio.get_event_loop()
-    url = await loop.run_in_executor(
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
         None, partial(_upload_bytes, data, object_name, content_type)
     )
     logger.info(f"Avatar uploaded: {object_name}")
-    return url
+    return object_name
+
+
+async def get_object(object_name: str) -> tuple[bytes, str]:
+    """Retrieve an object from MinIO. Returns (data, content_type)."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, partial(_get_object_bytes, object_name))

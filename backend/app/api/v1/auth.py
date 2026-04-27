@@ -28,6 +28,7 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import AuthService
 from app.core.storage import upload_avatar, ALLOWED_IMAGE_TYPES
+from app.core.config import settings
 
 
 logger = logging.getLogger(__name__)
@@ -257,10 +258,11 @@ async def upload_user_avatar(
             detail="File too large. Maximum size is 5 MB.",
         )
 
-    url = await upload_avatar(data, file.content_type)
+    object_name = await upload_avatar(data, file.content_type)
 
-    user.avatar_url = url
+    # Store the object name so it stays valid regardless of host/IP changes
+    user.avatar_url = object_name
     await db.commit()
 
     logger.info(f"Avatar updated for user: {user.username}")
-    return {"url": url}
+    return {"url": object_name}

@@ -6,6 +6,7 @@
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
 import { User, AuthTokens, Layer } from "../types";
+import { toAvatarUrl } from "../services/profile";
 
 interface AuthState {
   // State
@@ -55,6 +56,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (user, tokens) => {
     try {
+      if (user.avatar_url) user.avatar_url = toAvatarUrl(user.avatar_url) ?? undefined;
+
       // Store tokens securely
       await SecureStore.setItemAsync("access_token", tokens.access_token);
       await SecureStore.setItemAsync("refresh_token", tokens.refresh_token);
@@ -97,6 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (accessToken && refreshToken && userStr) {
         const user = JSON.parse(userStr) as User;
+        if (user.avatar_url) user.avatar_url = toAvatarUrl(user.avatar_url) ?? undefined;
         set({
           user,
           tokens: {

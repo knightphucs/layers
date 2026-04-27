@@ -1,5 +1,5 @@
 // ===========================================
-// LAYERS Profile Screen (Merged Version)
+// LAYERS Profile Screen (Unified Version)
 // ===========================================
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -18,8 +18,15 @@ import { useAuthStore } from "../../store/authStore";
 import { Colors } from "../../constants/colors";
 import { User } from "../../types";
 import { profileService, ProfileStats } from "../../services/profile";
-import { EditProfileModal, ProfileHeader, StatsGrid } from "../../components/profile";
+import {
+  EditProfileModal,
+  ProfileHeader,
+  StatsGrid,
+} from "../../components/profile";
 import NotificationPreferencesScreen from "./NotificationPreferencesScreen";
+import ConnectionsScreen from "./ConnectionsScreen";
+import PaperPlaneScreen from "./PaperPlaneScreen";
+import TimeCapsuleScreen from "./TimeCapsuleScreen";
 
 // ============================================================
 // MENU ITEMS
@@ -39,6 +46,27 @@ const MENU_ITEMS: MenuItem[] = [
     icon: "✏️",
     title: "Edit Profile",
     description: "Change username, bio, and avatar",
+    action: "navigate",
+  },
+  {
+    key: "connections",
+    icon: "🤝",
+    title: "Connections",
+    description: "Your people in the city",
+    action: "navigate",
+  },
+  {
+    key: "paper_plane",
+    icon: "✈️",
+    title: "Paper Planes",
+    description: "Throw a note to a random stranger",
+    action: "navigate",
+  },
+  {
+    key: "time_capsule",
+    icon: "⏰",
+    title: "Time Capsules",
+    description: "Send a message to future you",
     action: "navigate",
   },
   {
@@ -86,12 +114,14 @@ export default function ProfileScreen() {
   const { layer, user, logout, updateUser } = useAuthStore();
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
 
-  // State
   const [statsData, setStatsData] = useState<ProfileStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNotificationPrefs, setShowNotificationPrefs] = useState(false);
+  const [showConnections, setShowConnections] = useState(false);
+  const [showPaperPlane, setShowPaperPlane] = useState(false);
+  const [showTimeCapsule, setShowTimeCapsule] = useState(false);
 
   // ========================================================
   // LOAD DATA
@@ -138,6 +168,15 @@ export default function ProfileScreen() {
         case "edit":
           setShowEditModal(true);
           break;
+        case "connections":
+          setShowConnections(true);
+          break;
+        case "paper_plane":
+          setShowPaperPlane(true);
+          break;
+        case "time_capsule":
+          setShowTimeCapsule(true);
+          break;
         case "notifications":
           setShowNotificationPrefs(true);
           break;
@@ -171,6 +210,10 @@ export default function ProfileScreen() {
     [logout],
   );
 
+  const handleAvatarPress = useCallback(() => {
+    setShowEditModal(true);
+  }, []);
+
   // ========================================================
   // PROFILE SAVED
   // ========================================================
@@ -183,8 +226,20 @@ export default function ProfileScreen() {
   );
 
   // ========================================================
-  // NOTIFICATION PREFS VIEW
+  // RENDER GUARDS — SUB-SCREENS
   // ========================================================
+
+  if (showTimeCapsule) {
+    return <TimeCapsuleScreen onBack={() => setShowTimeCapsule(false)} />;
+  }
+
+  if (showPaperPlane) {
+    return <PaperPlaneScreen onBack={() => setShowPaperPlane(false)} />;
+  }
+
+  if (showConnections) {
+    return <ConnectionsScreen onBack={() => setShowConnections(false)} />;
+  }
 
   if (showNotificationPrefs) {
     return (
@@ -248,14 +303,18 @@ export default function ProfileScreen() {
       >
         <ProfileHeader
           user={currentUser}
-          onAvatarPress={() => setShowEditModal(true)}
+          onAvatarPress={handleAvatarPress}
           onEditPress={() => setShowEditModal(true)}
         />
 
-        {/* Stats Grid */}
-        {statsData && <StatsGrid stats={statsData} />}
+        {statsData ? (
+          <StatsGrid stats={statsData} />
+        ) : isLoading ? (
+          <View style={styles.statsLoading}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : null}
 
-        {/* Menu */}
         <View style={styles.menuContainer}>
           {MENU_ITEMS.map((item) => (
             <TouchableOpacity
@@ -303,13 +362,11 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* App version */}
         <Text style={[styles.version, { color: colors.textSecondary }]}>
           LAYERS v1.0.0 — Founded by @Kazyy
         </Text>
       </ScrollView>
 
-      {/* Edit Profile Modal */}
       {showEditModal && (
         <EditProfileModal
           visible={showEditModal}
@@ -338,6 +395,10 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
+  },
+  statsLoading: {
+    paddingVertical: 40,
+    alignItems: "center",
   },
   menuContainer: {
     paddingHorizontal: 16,

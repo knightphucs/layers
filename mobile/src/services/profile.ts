@@ -13,6 +13,29 @@
 
 import api from "./api";
 import { User } from "../types";
+import { Config } from "../constants/config";
+
+/**
+ * Convert a stored avatar value to a fully-qualified URL served through
+ * the API proxy (GET /files/<path>).
+ *
+ * Handles two stored formats:
+ *   - Object name:  "avatars/abc123.jpg"          → <API_URL>/files/avatars/abc123.jpg
+ *   - Legacy URL:   "http://192.168.x.x:9000/..."  → same, path extracted
+ */
+export function toAvatarUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  // Extract object name from an existing proxy URL so we always rebuild
+  // with the current Config.API_URL (handles stale IPs from SecureStore).
+  const apiMatch = value.match(/\/api\/v1\/files\/(.*)/);
+  if (apiMatch) {
+    return `${Config.API_URL}/files/${apiMatch[1]}`;
+  }
+  // Legacy full MinIO URL — extract everything after the bucket name
+  const minioMatch = value.match(/https?:\/\/[^/]+\/[^/]+\/(.*)/);
+  const objectName = minioMatch ? minioMatch[1] : value;
+  return `${Config.API_URL}/files/${objectName}`;
+}
 
 // ============================================================
 // TYPES
@@ -82,7 +105,9 @@ export const profileService = {
    */
   getProfile: async (): Promise<User> => {
     const response = await api.get<User>("/auth/me");
-    return response.data;
+    const user = response.data;
+    if (user.avatar_url) user.avatar_url = toAvatarUrl(user.avatar_url) ?? undefined;
+    return user;
   },
 
   /**
@@ -90,7 +115,9 @@ export const profileService = {
    */
   updateProfile: async (data: UpdateProfileRequest): Promise<User> => {
     const response = await api.put<User>("/auth/me", data);
-    return response.data;
+    const user = response.data;
+    if (user.avatar_url) user.avatar_url = toAvatarUrl(user.avatar_url) ?? undefined;
+    return user;
   },
 
   /**
@@ -186,7 +213,9 @@ export const profileService = {
           headers: { "Content-Type": "multipart/form-data" },
         },
       );
-      return response.data.url;
+      // Backend returns the object name (e.g. "avatars/abc123.jpg").
+      // Serve it through the API proxy so only port 8000 is needed.
+      return toAvatarUrl(response.data.url) ?? imageUri;
     } catch (error) {
       // Fallback: use the local URI (works for dev)
       console.warn("Avatar upload failed, using local URI:", error);

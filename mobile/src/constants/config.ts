@@ -1,26 +1,34 @@
 // LAYERS Configuration
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
-// Auto-detect dev machine IP from Expo dev server
-// Optional override for stable LAN host across Expo restarts:
-// EXPO_PUBLIC_API_HOST=192.168.0.101
-const DEV_API_HOST = process.env.EXPO_PUBLIC_API_HOST || "192.168.0.101";
-
-const getDevApiUrl = (): string => {
-  if (DEV_API_HOST) {
-    return `http://${DEV_API_HOST}:8000/api/v1`;
+const getDevHost = (): string => {
+  // 1. Explicit override via env var (most reliable, set in mobile/.env)
+  if (process.env.EXPO_PUBLIC_API_HOST) {
+    return process.env.EXPO_PUBLIC_API_HOST;
   }
 
-  const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.0.102:8081"
+  // 2. Auto-detect from Expo dev server's hostUri (LAN IP of dev machine)
+  const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.1.5:8081"
   if (hostUri) {
-    const host = hostUri.split(":")[0];
-    return `http://${host}:8000/api/v1`;
+    return hostUri.split(":")[0];
   }
-  return "http://localhost:8000/api/v1";
+
+  // 3. Android emulator → host machine is reachable at 10.0.2.2
+  if (Platform.OS === "android") {
+    return "10.0.2.2";
+  }
+
+  // 4. iOS simulator / web → localhost
+  return "localhost";
 };
+
+const getDevApiUrl = (): string => `http://${getDevHost()}:8000/api/v1`;
+const getDevMinioUrl = (): string => `http://${getDevHost()}:9000`;
 
 export const Config = {
   API_URL: __DEV__ ? getDevApiUrl() : "https://api.layers.app/v1",
+  MINIO_URL: __DEV__ ? getDevMinioUrl() : "https://storage.layers.app",
 
   // Map Default Region (Ho Chi Minh City)
   MAP_DEFAULT_REGION: {

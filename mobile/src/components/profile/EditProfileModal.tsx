@@ -53,6 +53,7 @@ export default function EditProfileModal({
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(user.avatar_url || null);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<{ username?: string; bio?: string }>({});
+  const [avatarError, setAvatarError] = useState(false);
 
   // ========================================================
   // VALIDATION
@@ -147,6 +148,7 @@ export default function EditProfileModal({
       if (!result.canceled && result.assets[0]) {
         const pickedUri = result.assets[0].uri;
         setLocalAvatarUri(pickedUri);
+        setAvatarError(false);
         setIsSaving(true);
         const avatarUrl = await profileService.uploadAvatar(pickedUri);
         const updatedUser = await profileService.updateProfile({
@@ -214,10 +216,11 @@ export default function EditProfileModal({
               style={styles.avatarSection}
               activeOpacity={0.7}
             >
-              {localAvatarUri ? (
+              {localAvatarUri && !avatarError ? (
                 <Image
                   source={{ uri: localAvatarUri }}
                   style={[styles.avatarCircle, { borderColor: colors.primary }]}
+                  onError={() => setAvatarError(true)}
                 />
               ) : (
                 <View
