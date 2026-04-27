@@ -12,6 +12,7 @@ KEY CONCEPTS:
 
 """
 
+from asyncio.log import logger
 import uuid
 import hashlib
 import random
@@ -57,7 +58,7 @@ def _check_time_lock(unlock_conditions: Optional[dict]) -> tuple[bool, Optional[
     if not unlock_conditions:
         return False, None
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Time window lock (Shadow Layer: 23:00-03:00)
     if "time_start" in unlock_conditions and "time_end" in unlock_conditions:
@@ -77,6 +78,8 @@ def _check_time_lock(unlock_conditions: Optional[dict]) -> tuple[bool, Optional[
     # Future date lock (Time Capsule)
     if "unlock_date" in unlock_conditions:
         unlock_date = datetime.fromisoformat(unlock_conditions["unlock_date"])
+        if unlock_date.tzinfo is None:
+            unlock_date = unlock_date.replace(tzinfo=timezone.utc)
         if now < unlock_date:
             days_left = (unlock_date - now).days
             return True, f"Opens in {days_left} days"
@@ -604,6 +607,17 @@ class ArtifactService:
         # Update artifact stats
         artifact.reply_count += 1
         await db.commit()
+        
+        try:
+            from app.services.connection_service import ConnectionService
+            await ConnectionService.record_interaction(
+                db=db,
+                user_a_id=user_id,
+                user_b_id=artifact.user_id,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record interaction for reply: {e}")
+        
         await db.refresh(reply)
 
         return {
@@ -692,7 +706,8 @@ class ArtifactService:
                 "save_count": artifact.save_count,
                 "payload": artifact.payload,
                 "created_at": artifact.created_at,
-                "is_locked": False,  # Own artifacts never locked
+                "unlock_at": artifact.unlock_at,
+                "is_locked": False,
                 "preview_text": artifact.payload.get("text", "")[:50] if artifact.payload else None,
             })
 

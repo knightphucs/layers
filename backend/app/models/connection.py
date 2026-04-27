@@ -7,7 +7,14 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import String, Integer, DateTime, Enum as SQLEnum, ForeignKey
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum as SQLEnum,
+    ForeignKey,
+    Integer,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -70,6 +77,27 @@ class Connection(Base):
     connected_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=True
+    )
+
+    upgrade_requested_by_a: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+
+    upgrade_requested_by_b: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+
+    last_interaction_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+        server_default=text("NOW()"),
     )
     
     def __repr__(self) -> str:

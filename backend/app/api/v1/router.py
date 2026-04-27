@@ -12,6 +12,8 @@ from app.api.v1.explore import router as explore_router
 from app.api.v1.anti_cheat import router as anti_cheat_router
 from app.api.v1.health import router as health_router
 from app.api.v1.notifications import router as notifications_router
+from app.api.v1.connections import router as connections_router
+from app.api.v1.files import router as files_router
 # from app.api.v1.social import router as social_router  # Week 6
 # from app.api.v1.commerce import router as commerce_router  # Week 7
 
@@ -25,6 +27,8 @@ api_router.include_router(explore_router)
 api_router.include_router(anti_cheat_router)
 api_router.include_router(health_router)
 api_router.include_router(notifications_router)
+api_router.include_router(connections_router)
+api_router.include_router(files_router)
 # api_router.include_router(social_router)
 # api_router.include_router(commerce_router)
 
@@ -38,7 +42,7 @@ async def api_info():
         "api_version": "v1",
         "status": "active",
         "week": 5,
-        "day": 2,
+        "day": 4,
         "modules": {
             "auth": "✅ Active (Week 1)",
             "map": "✅ Active (Day 1 — PostGIS geo-queries)",
@@ -47,9 +51,10 @@ async def api_info():
             "anti_cheat": "✅ Active (Day 4 — 4 detection methods)",
             "health": "✅ Active (Day 5 — System monitoring)",
             "notifications": "✅ Active (Week 5 Day 2 — Push notifications)",
-            "social": "🚧 Coming Week 5",
+            "connections": "✅ Active (Week 5 Day 4 — Connection system)",
+            "social": "🚧 Coming Week 6",
             "commerce": "🚧 Coming Week 7",
         },
-        "endpoints_total": 38,
-        "test_files": 7,
+        "endpoints_total": 43,
+        "test_files": 8,
     }
