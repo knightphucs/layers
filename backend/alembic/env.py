@@ -21,6 +21,7 @@ from app.models.location import Location, ExploredChunk
 from app.models.artifact import Artifact, ArtifactReply
 from app.models.inventory import InventoryItem, MailQueue
 from app.models.connection import Connection
+from app.models.chat import ChatRoom, Message
 
 # Alembic Config object
 config = context.config

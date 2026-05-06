@@ -14,6 +14,7 @@ from app.api.v1.health import router as health_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.connections import router as connections_router
 from app.api.v1.files import router as files_router
+from app.api.v1.chat import router as chat_router
 # from app.api.v1.social import router as social_router  # Week 6
 # from app.api.v1.commerce import router as commerce_router  # Week 7
 
@@ -29,6 +30,7 @@ api_router.include_router(health_router)
 api_router.include_router(notifications_router)
 api_router.include_router(connections_router)
 api_router.include_router(files_router)
+api_router.include_router(chat_router)
 # api_router.include_router(social_router)
 # api_router.include_router(commerce_router)
 
@@ -41,8 +43,8 @@ async def api_info():
     return {
         "api_version": "v1",
         "status": "active",
-        "week": 5,
-        "day": 4,
+        "week": 6,
+        "day": 1,
         "modules": {
             "auth": "✅ Active (Week 1)",
             "map": "✅ Active (Day 1 — PostGIS geo-queries)",
@@ -52,9 +54,13 @@ async def api_info():
             "health": "✅ Active (Day 5 — System monitoring)",
             "notifications": "✅ Active (Week 5 Day 2 — Push notifications)",
             "connections": "✅ Active (Week 5 Day 4 — Connection system)",
+            "chat": "✅ Active (Week 6 Day 1 — WebSocket + DIRECT rooms)",
             "social": "🚧 Coming Week 6",
             "commerce": "🚧 Coming Week 7",
         },
-        "endpoints_total": 43,
-        "test_files": 8,
+        "websocket_endpoints": [
+            "WS /api/v1/chat/ws/{room_id}?token={jwt}",
+        ],
+        "endpoints_total": 46,
+        "test_files": 9,
     }

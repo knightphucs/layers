@@ -47,6 +47,24 @@ from app.schemas.artifact import (
     ArtifactReplyResponse
 )
 
+from app.schemas.chat import (
+    ChatRoomType,
+    ChatRoomStatus,
+    MessageResponse as ChatMessageResponse,
+    ChatRoomResponse,
+    ChatRoomDetail,
+    MessageListResponse,
+    SendMessageRequest,
+    WSClientMessage,
+    WSClientPing,
+    WSClientPayload,
+    WSServerMessage,
+    WSServerPresence,
+    WSServerError,
+    WSServerPong,
+    WSCloseCode,
+)
+
 __all__ = [
     # Auth
     "UserRegister",
@@ -88,4 +106,21 @@ __all__ = [
     "TimeCapsuleCreate",
     "ArtifactReplyCreate",
     "ArtifactReplyResponse",
+    
+    # Chat
+    "ChatRoomType",
+    "ChatRoomStatus",
+    "ChatMessageResponse",
+    "ChatRoomResponse",
+    "ChatRoomDetail",
+    "MessageListResponse",
+    "SendMessageRequest",
+    "WSClientMessage",
+    "WSClientPing",
+    "WSClientPayload",
+    "WSServerMessage",
+    "WSServerPresence",
+    "WSServerError",
+    "WSServerPong",
+    "WSCloseCode",
 ]

@@ -77,7 +77,7 @@ class Location(Base):
     # GEOGRAPHY type with SRID 4326 (WGS84 = standard GPS coordinates)
     # This enables ST_DWithin queries in METERS
     geom = Column(
-        Geography(geometry_type='POINT', srid=4326),
+        Geography(geometry_type='POINT', srid=4326, spatial_index=False),
         nullable=False,
         comment="GPS coordinates as PostGIS GEOGRAPHY point"
     )

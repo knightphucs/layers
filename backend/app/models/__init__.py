@@ -8,6 +8,8 @@ from app.models.location import Location, ExploredChunk, LayerType, LocationCate
 from app.models.artifact import Artifact, ArtifactReply, ContentType, Visibility, ArtifactStatus
 from app.models.connection import Connection, ConnectionStatus
 from app.models.inventory import InventoryItem, MailQueue
+from app.models.chat import ChatRoom, Message, ChatRoomType, ChatRoomStatus
+from app.models.notification import DeviceToken, NotificationPreference, NotificationHistory
 
 __all__ = [
     # User
@@ -34,4 +36,15 @@ __all__ = [
     # Inventory
     "InventoryItem",
     "MailQueue",
+    
+    # Social - Chat
+    "ChatRoom",
+    "Message",
+    "ChatRoomType",
+    "ChatRoomStatus",
+
+    # Notifications
+    "DeviceToken",
+    "NotificationPreference",
+    "NotificationHistory",
 ]
