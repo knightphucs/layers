@@ -27,6 +27,7 @@ import NotificationPreferencesScreen from "./NotificationPreferencesScreen";
 import ConnectionsScreen from "./ConnectionsScreen";
 import PaperPlaneScreen from "./PaperPlaneScreen";
 import TimeCapsuleScreen from "./TimeCapsuleScreen";
+import MessagesContainer from "./MessagesContainer";
 
 // ============================================================
 // MENU ITEMS
@@ -53,6 +54,13 @@ const MENU_ITEMS: MenuItem[] = [
     icon: "🤝",
     title: "Connections",
     description: "Your people in the city",
+    action: "navigate",
+  },
+  {
+    key: "messages",
+    icon: "💬",
+    title: "Messages",
+    description: "Real-time chats with connected people",
     action: "navigate",
   },
   {
@@ -122,6 +130,7 @@ export default function ProfileScreen() {
   const [showConnections, setShowConnections] = useState(false);
   const [showPaperPlane, setShowPaperPlane] = useState(false);
   const [showTimeCapsule, setShowTimeCapsule] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
 
   // ========================================================
   // LOAD DATA
@@ -170,6 +179,9 @@ export default function ProfileScreen() {
           break;
         case "connections":
           setShowConnections(true);
+          break;
+        case "messages":
+          setShowMessages(true);
           break;
         case "paper_plane":
           setShowPaperPlane(true);
@@ -238,7 +250,19 @@ export default function ProfileScreen() {
   }
 
   if (showConnections) {
-    return <ConnectionsScreen onBack={() => setShowConnections(false)} />;
+    return (
+      <ConnectionsScreen
+        onBack={() => setShowConnections(false)}
+        onOpenMessages={() => {
+          setShowConnections(false);
+          setShowMessages(true);
+        }}
+      />
+    );
+  }
+
+  if (showMessages) {
+    return <MessagesContainer onBack={() => setShowMessages(false)} />;
   }
 
   if (showNotificationPrefs) {
