@@ -148,6 +148,15 @@ class ConnectionManager:
     def room_size(self, room_id: UUID) -> int:
         """How many active WebSockets are in this room."""
         return len(self.active.get(room_id, set()))
+    
+    def users_in_room(self, room_id: UUID) -> Set[UUID]:
+        """Unqnie user IDs currently connected to this room."""
+        user_ids: Set[UUID] = set()
+        for ws in self.active.get(room_id, set()):
+            meta = self.ws_meta.get(ws)
+            if meta:
+                user_ids.add(meta["user_id"])
+        return user_ids
 
     def total_connections(self) -> int:
         """Total active WebSockets across all rooms."""

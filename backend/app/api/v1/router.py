@@ -44,7 +44,7 @@ async def api_info():
         "api_version": "v1",
         "status": "active",
         "week": 6,
-        "day": 1,
+        "day": 3,
         "modules": {
             "auth": "✅ Active (Week 1)",
             "map": "✅ Active (Day 1 — PostGIS geo-queries)",
@@ -54,13 +54,13 @@ async def api_info():
             "health": "✅ Active (Day 5 — System monitoring)",
             "notifications": "✅ Active (Week 5 Day 2 — Push notifications)",
             "connections": "✅ Active (Week 5 Day 4 — Connection system)",
-            "chat": "✅ Active (Week 6 Day 1 — WebSocket + DIRECT rooms)",
+            "chat": "✅ Active (Week 6 Day 3 — Campfire chat system)",
             "social": "🚧 Coming Week 6",
             "commerce": "🚧 Coming Week 7",
         },
         "websocket_endpoints": [
             "WS /api/v1/chat/ws/{room_id}?token={jwt}",
         ],
-        "endpoints_total": 46,
-        "test_files": 9,
+        "endpoints_total": 53,
+        "test_files": 10,
     }

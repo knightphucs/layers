@@ -19,7 +19,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+from geoalchemy2 import Geography
 from sqlalchemy import (
+    Float,
     String,
     Integer,
     DateTime,
@@ -111,6 +113,39 @@ class ChatRoom(Base):
         nullable=True,
         index=True
     )
+    
+    # ---- CAMPFIRE room fields ----
+    center_geom: Mapped[Optional[str]] = mapped_column(
+        Geography(geometry_type="POINT", srid=4326),
+        nullable=True,
+        comment="PostGIS POINT for campfire center (GPS coords WGS84)"
+    )
+    # Mirror columns for convenience (avoid PostGIS function calls everywhere)
+    center_latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    center_longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    radius_meters: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Geo-fence radius in meters (default 50 for campfires)"
+    )
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment="When the campfire auto-closes (extended on activity)"
+    )
+    name: Mapped[Optional[str]] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Optional campfire title (e.g. 'Highlands Q1')"
+    )
+    creator_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Who started the campfire (NULL for DIRECT)"
+    )
 
     # ---- Stats / Lifecycle ----
     message_count: Mapped[int] = mapped_column(
@@ -201,3 +236,61 @@ class Message(Base):
     def __repr__(self) -> str:
         preview = self.content[:30] + "…" if len(self.content) > 30 else self.content
         return f"<Message {self.sender_id} in room {self.room_id}: {preview!r}>"
+
+# ============================================================
+# CAMPFIRE MEMBER
+# ============================================================
+
+class CampfireMember(Base):
+    """
+    Tracks who has joined a campfire room.
+
+    Lifecycle:
+      - join_campfire() → INSERT row with left_at=NULL
+      - leave_campfire() → UPDATE left_at = NOW()
+      - Re-join → INSERT new row (history preserved for analytics)
+
+    A user is considered "actively joined" iff:
+      - row exists with this room_id + user_id
+      - left_at IS NULL
+
+    Partial unique index in migration ensures at most ONE active membership
+    per (room_id, user_id), but allows historical rows for repeat visits.
+    """
+    __tablename__ = "campfire_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+
+    room_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chat_rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False
+    )
+
+    left_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True
+    )
+
+    def __repr__(self) -> str:
+        state = "active" if self.left_at is None else "left"
+        return f"<CampfireMember user={self.user_id} room={self.room_id} ({state})>"

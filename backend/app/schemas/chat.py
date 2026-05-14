@@ -58,8 +58,19 @@ class ChatRoomResponse(BaseModel):
     id: UUID
     room_type: ChatRoomType
     status: ChatRoomStatus
+    
+    # DIRECT
     user_a_id: Optional[UUID] = None
     user_b_id: Optional[UUID] = None
+    
+    # CAMPFIRE
+    center_latitude: Optional[float] = None
+    center_longitude: Optional[float] = None
+    radius_meters: Optional[int] = None
+    expires_at: Optional[datetime] = None
+    name: Optional[str] = None
+    creator_id: Optional[UUID] = None
+    
     message_count: int
     last_activity_at: datetime
     created_at: datetime
@@ -81,13 +92,66 @@ class MessageListResponse(BaseModel):
 
 
 # ============================================================
-# REST REQUESTS (Day 1 has only test/dev request shapes; Day 2 adds room creation)
+# REST REQUESTS
 # ============================================================
 
 class SendMessageRequest(BaseModel):
     """REST send (used in tests + by mobile fallback when WS is dead)."""
     content: str = Field(..., min_length=1, max_length=2000)
 
+class CampfireFindOrCreateRequest(BaseModel):
+    """POST /chat/campfires/find-or-create"""
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    name: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="Optional title only used when creating a NEW campfire",
+    )
+class CampfireJoinRequest(BaseModel):
+    """POST /chat/campfires/{room_id}/join — verify proximity to center."""
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    
+# ============================================================
+# CAMPFIRE RESPONSES (Day 3)
+# ============================================================
+
+class CampfireMemberInfo(BaseModel):
+    """A single campfire member (for the members panel)."""
+    user_id: UUID
+    joined_at: datetime
+    is_online: bool = False  # Derived from WS connection manager
+    username: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class CampfireMembersResponse(BaseModel):
+    """GET /chat/campfires/{room_id}/members"""
+    members: List[CampfireMemberInfo]
+    online_count: int
+    total_count: int
+
+
+class CampfireNearbyItem(BaseModel):
+    """A single campfire in the 'nearby campfires' list (for map beacons)."""
+    id: UUID
+    name: Optional[str] = None
+    center_latitude: float
+    center_longitude: float
+    radius_meters: int
+    expires_at: datetime
+    distance_meters: float  # From the query point
+    online_count: int
+    creator_id: Optional[UUID] = None
+    created_at: datetime
+
+
+class CampfireNearbyResponse(BaseModel):
+    """GET /chat/campfires/nearby?lat=&lng=&radius="""
+    items: List[CampfireNearbyItem]
 
 # ============================================================
 # WEBSOCKET PAYLOADS — CLIENT → SERVER
