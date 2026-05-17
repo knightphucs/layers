@@ -1,5 +1,5 @@
 /**
- * LAYERS — Chat Store (Week 6 Day 2)
+ * LAYERS — Chat Store
  * ===================================
  * Zustand store for chat state.
  *
@@ -28,6 +28,8 @@
 import { create } from "zustand";
 import { chatService, WebSocketClient } from "../services/chat";
 import {
+  CampfireMemberInfo,
+  CampfireNearbyItem,
   ChatMessage,
   ChatMessageWithStatus,
   ChatRoom,
@@ -96,6 +98,11 @@ interface ChatState {
   isOpeningChat: boolean;
   error: string | null;
 
+  nearbyCampfires: CampfireNearbyItem[];
+  membersByRoom: Record<string, CampfireMemberInfo[]>;
+  isLoadingNearby: boolean;
+  isLoadingMembers: boolean;
+
   // ---- Actions ----
   fetchRooms: (currentUserId: string) => Promise<void>;
   openChatWithUser: (
@@ -112,8 +119,25 @@ interface ChatState {
   loadOlderMessages: (roomId: string) => Promise<void>;
   clearError: () => void;
   reset: () => void;
+  fetchNearbyCampfires: (
+    lat: number,
+    lng: number,
+    radius?: number,
+  ) => Promise<void>;
+  openCampfire: (
+    lat: number,
+    lng: number,
+    name?: string,
+  ) => Promise<string | null>;
+  joinCampfireById: (
+    roomId: string,
+    lat: number,
+    lng: number,
+  ) => Promise<boolean>;
+  leaveCampfire: (roomId: string) => Promise<void>;
+  refreshMembers: (roomId: string) => Promise<void>;
 
-  // ---- Internal helpers (not part of public API but useful) ----
+  // ---- Internal helpers ----
   _handleFrame: (frame: WSServerMessage) => void;
 }
 
@@ -123,15 +147,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messagesByRoom: {},
   cursorByRoom: {},
   hasMoreByRoom: {},
-
   activeRoomId: null,
   wsClient: null,
   wsState: "idle",
-
   isLoadingRooms: false,
   isLoadingMessages: false,
   isOpeningChat: false,
   error: null,
+  nearbyCampfires: [],
+  membersByRoom: {},
+  isLoadingNearby: false,
+  isLoadingMembers: false,
 
   // ============================================================
   // fetchRooms
@@ -373,6 +399,125 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  // ============================================================
+  // Day 3: fetchNearbyCampfires (for map beacons)
+  // ============================================================
+  fetchNearbyCampfires: async (lat, lng, radius = 500) => {
+    set({ isLoadingNearby: true });
+    try {
+      const resp = await chatService.getNearbyCampfires(lat, lng, radius);
+      set({ nearbyCampfires: resp.items, isLoadingNearby: false });
+    } catch (e: any) {
+      if (__DEV__) console.warn("[chatStore] fetchNearbyCampfires failed:", e);
+      set({ isLoadingNearby: false });
+    }
+  },
+
+  // ============================================================
+  // Day 3: openCampfire (find-or-create + open WS)
+  // ============================================================
+  openCampfire: async (lat, lng, name) => {
+    set({ isOpeningChat: true, error: null });
+    try {
+      const detail = await chatService.findOrCreateCampfire(lat, lng, name);
+      const item: ChatRoomItem = { ...detail, other_user_id: null };
+      const recent: ChatMessageWithStatus[] = (
+        detail.recent_messages || []
+      ).map((m) => ({ ...m, status: "sent" }));
+
+      set((state) => {
+        const existing = state.rooms.findIndex((r) => r.id === item.id);
+        const nextRooms =
+          existing >= 0
+            ? state.rooms.map((r) => (r.id === item.id ? item : r))
+            : [item, ...state.rooms];
+        return {
+          rooms: nextRooms,
+          messagesByRoom: { ...state.messagesByRoom, [item.id]: recent },
+          activeRoomId: item.id,
+          isOpeningChat: false,
+        };
+      });
+
+      // Open WS — use creator_id as best-effort currentUserId (it's the caller)
+      const wsClient = new WebSocketClient({
+        roomId: item.id,
+        onStateChange: (state) => set({ wsState: state }),
+        onFrame: (frame) => get()._handleFrame(frame),
+        onClosed: (code, reason) => {
+          if (__DEV__)
+            console.log(
+              `[chatStore] campfire WS terminal close: ${code} ${reason}`,
+            );
+        },
+      });
+      const existingClient = get().wsClient;
+      if (existingClient) existingClient.close();
+      set({ wsClient });
+      wsClient.connect();
+
+      // Pre-load member panel
+      get().refreshMembers(item.id);
+
+      return item.id;
+    } catch (e: any) {
+      set({
+        error: e?.response?.data?.detail || "Failed to open campfire",
+        isOpeningChat: false,
+      });
+      return null;
+    }
+  },
+
+  // ============================================================
+  // Day 3: joinCampfireById (proximity-checked)
+  // ============================================================
+  joinCampfireById: async (roomId, lat, lng) => {
+    try {
+      await chatService.joinCampfire(roomId, lat, lng);
+      return true;
+    } catch (e: any) {
+      set({ error: e?.response?.data?.detail || "Failed to join campfire" });
+      return false;
+    }
+  },
+
+  // ============================================================
+  // Day 3: leaveCampfire
+  // ============================================================
+  leaveCampfire: async (roomId) => {
+    try {
+      await chatService.leaveCampfire(roomId);
+    } catch (e: any) {
+      if (__DEV__) console.warn("[chatStore] leaveCampfire failed:", e);
+    }
+    // Remove from rooms list (we're no longer a member)
+    set((state) => ({
+      rooms: state.rooms.filter((r) => r.id !== roomId),
+    }));
+    // Close WS if it's the active room
+    if (get().activeRoomId === roomId) {
+      get().leaveChat();
+    }
+  },
+
+  // ============================================================
+  // Day 3: refreshMembers
+  // ============================================================
+  refreshMembers: async (roomId) => {
+    set({ isLoadingMembers: true });
+    try {
+      const resp = await chatService.getCampfireMembers(roomId);
+      set((state) => ({
+        membersByRoom: { ...state.membersByRoom, [roomId]: resp.members },
+        isLoadingMembers: false,
+      }));
+    } catch (e: any) {
+      if (__DEV__) console.warn("[chatStore] refreshMembers failed:", e);
+      set({ isLoadingMembers: false });
+    }
+  },
+
   clearError: () => set({ error: null }),
 
   reset: () => {
@@ -390,6 +535,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isLoadingMessages: false,
       isOpeningChat: false,
       error: null,
+      nearbyCampfires: [],
+      membersByRoom: {},
+      isLoadingNearby: false,
+      isLoadingMembers: false,
     });
   },
 

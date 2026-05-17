@@ -34,6 +34,12 @@ export interface ChatRoom {
   status: ChatRoomStatus;
   user_a_id: string | null;
   user_b_id: string | null;
+  center_latitude: number | null;
+  center_longitude: number | null;
+  radius_meters: number | null;
+  expires_at: string | null;
+  name: string | null;
+  creator_id: string | null;
   message_count: number;
   last_activity_at: string;
   created_at: string;
@@ -45,7 +51,7 @@ export interface ChatRoomDetail extends ChatRoom {
 }
 
 // ============================================================
-// LIST RESPONSE (paginated messages)
+// LIST / RESPONSE (paginated messages)
 // ============================================================
 
 export interface MessageListResponse {
@@ -53,17 +59,58 @@ export interface MessageListResponse {
   has_more: boolean;
   next_cursor: string | null; // ISO datetime
 }
-
-// ============================================================
-// REQUESTS
-// ============================================================
-
 export interface DirectRoomCreateRequest {
   other_user_id: string;
 }
 
 export interface SendMessageRequest {
   content: string;
+}
+
+export interface CampfireFindOrCreateRequest {
+  latitude: number;
+  longitude: number;
+  name?: string;
+}
+
+export interface CampfireJoinRequest {
+  latitude: number;
+  longitude: number;
+}
+
+// ============================================================
+// CAMPFIRE RESPONSES
+// ============================================================
+
+export interface CampfireMemberInfo {
+  user_id: string;
+  joined_at: string;
+  is_online: boolean;
+  username: string | null;
+  avatar_url: string | null;
+}
+
+export interface CampfireMembersResponse {
+  members: CampfireMemberInfo[];
+  online_count: number;
+  total_count: number;
+}
+
+export interface CampfireNearbyItem {
+  id: string;
+  name: string | null;
+  center_latitude: number;
+  center_longitude: number;
+  radius_meters: number;
+  expires_at: string;
+  distance_meters: number;
+  online_count: number;
+  creator_id: string | null;
+  created_at: string;
+}
+
+export interface CampfireNearbyResponse {
+  items: CampfireNearbyItem[];
 }
 
 // ============================================================

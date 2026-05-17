@@ -18,6 +18,7 @@
 
 import * as SecureStore from "expo-secure-store";
 import api from "./api";
+import { toAvatarUrl } from "./profile";
 import { Config } from "../constants/config";
 import {
   ChatRoom,
@@ -29,6 +30,10 @@ import {
   WSClientMessage,
   WSServerMessage,
   WSConnectionState,
+  CampfireJoinRequest,
+  CampfireFindOrCreateRequest,
+  CampfireMembersResponse,
+  CampfireNearbyResponse,
 } from "../types/chat";
 
 // ============================================================
@@ -98,6 +103,80 @@ export const chatService = {
       body,
     );
     return response.data;
+  },
+
+  // ---- Campfires ----
+
+  /**
+   * Find the closest active campfire within 50m of (lat, lng), or create one.
+   * The current user is auto-joined as a member.
+   * Rate-limited: 1 creation per user per 10 minutes (server-side 429).
+   */
+  findOrCreateCampfire: async (
+    latitude: number,
+    longitude: number,
+    name?: string,
+  ): Promise<ChatRoomDetail> => {
+    const body: CampfireFindOrCreateRequest = { latitude, longitude };
+    if (name) body.name = name;
+    const response = await api.post<ChatRoomDetail>(
+      "/chat/campfires/find-or-create",
+      body,
+    );
+    return response.data;
+  },
+
+  /**
+   * Explicit join — verifies the user is within the campfire's geo-fence.
+   * Returns 403 if outside.
+   */
+  joinCampfire: async (
+    roomId: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<ChatRoomDetail> => {
+    const body: CampfireJoinRequest = { latitude, longitude };
+    const response = await api.post<ChatRoomDetail>(
+      `/chat/campfires/${roomId}/join`,
+      body,
+    );
+    return response.data;
+  },
+
+  /** Marks left_at on the user's active membership. Idempotent. */
+  leaveCampfire: async (roomId: string): Promise<void> => {
+    await api.post(`/chat/campfires/${roomId}/leave`);
+  },
+
+  /** For map beacons. */
+  getNearbyCampfires: async (
+    latitude: number,
+    longitude: number,
+    radiusMeters: number = 500,
+  ): Promise<CampfireNearbyResponse> => {
+    const response = await api.get<CampfireNearbyResponse>(
+      "/chat/campfires/nearby",
+      {
+        params: { lat: latitude, lng: longitude, radius_meters: radiusMeters },
+      },
+    );
+    return response.data;
+  },
+
+  /** Member panel data with online status. */
+  getCampfireMembers: async (
+    roomId: string,
+  ): Promise<CampfireMembersResponse> => {
+    const response = await api.get<CampfireMembersResponse>(
+      `/chat/campfires/${roomId}/members`,
+    );
+    return {
+      ...response.data,
+      members: response.data.members.map((member) => ({
+        ...member,
+        avatar_url: toAvatarUrl(member.avatar_url),
+      })),
+    };
   },
 };
 
