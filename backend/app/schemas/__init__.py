@@ -71,6 +71,22 @@ from app.schemas.chat import (
     WSCloseCode,
 )
 
+from app.schemas.social_spark import (
+    BoostCreateRequest,
+    BoostResponse,
+    BoostQuotaResponse,
+    BoostedArtifactItem,
+    BoostedNearbyResponse,
+    WaveCreateRequest,
+    WaveCreateResponse,
+    WaveNearbyResponse,
+    DiscoverRequest,
+    DiscoverResponse,
+    SynchronicityMatch,
+    SynchronicityListItem,
+    SynchronicityListResponse,
+)
+
 __all__ = [
     # Auth
     "UserRegister",
@@ -135,4 +151,19 @@ __all__ = [
     "WSServerError",
     "WSServerPong",
     "WSCloseCode",
+    
+    # Social Spark
+    "BoostCreateRequest",
+    "BoostResponse",
+    "BoostQuotaResponse",
+    "BoostedArtifactItem",
+    "BoostedNearbyResponse",
+    "WaveCreateRequest",
+    "WaveCreateResponse",
+    "WaveNearbyResponse",
+    "DiscoverRequest",
+    "DiscoverResponse",
+    "SynchronicityMatch",
+    "SynchronicityListItem",
+    "SynchronicityListResponse",
 ]

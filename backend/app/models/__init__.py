@@ -10,6 +10,12 @@ from app.models.connection import Connection, ConnectionStatus
 from app.models.inventory import InventoryItem, MailQueue
 from app.models.chat import ChatRoom, Message, ChatRoomType, ChatRoomStatus, CampfireMember
 from app.models.notification import DeviceToken, NotificationPreference, NotificationHistory
+from app.models.social_spark import (
+    ArtifactBoost,
+    Wave,
+    ArtifactDiscovery,
+    SynchronicityEvent,
+)
 
 __all__ = [
     # User
@@ -48,4 +54,10 @@ __all__ = [
     "DeviceToken",
     "NotificationPreference",
     "NotificationHistory",
+    
+    # Social Spark
+    "ArtifactBoost",
+    "Wave",
+    "ArtifactDiscovery",
+    "SynchronicityEvent",
 ]
