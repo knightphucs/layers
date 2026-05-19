@@ -33,6 +33,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // Stores & Hooks
 import { useAuthStore } from "../../store/authStore";
 import { useArtifactStore } from "../../store/artifactStore";
+import { useChatStore } from "../../store/chatStore";
 import { useLocation } from "../../hooks/useLocation";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { useExploration } from "../../hooks/useExploration";
@@ -52,6 +53,8 @@ import { ClusterMarker } from "../../components/map/MarkerCluster";
 import CreateArtifactSheet from "../../components/create/CreateArtifactSheet";
 import DropAnimation from "../../components/create/DropAnimation";
 import ArtifactDetailSheet from "../../components/detail/ArtifactDetailSheet";
+import { CampfireBeacon } from "../../components/chat";
+import CampfireScreen from "./CampfireScreen";
 import {
   OfflineBanner,
   GPSAccuracyIndicator,
@@ -104,6 +107,7 @@ function MapScreenInner() {
   const [mapReady, setMapReady] = useState(false);
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
   const [showFog, setShowFog] = useState(true);
+  const [activeCampfireId, setActiveCampfireId] = useState<string | null>(null);
 
   // ---- AUTH & THEME ----
   const { layer, toggleLayer } = useAuthStore();
@@ -139,6 +143,11 @@ function MapScreenInner() {
     selectedArtifact,
     clearSelection,
   } = useArtifactStore();
+
+  // ---- CAMPFIRES ----
+  const nearbyCampfires = useChatStore((s) => s.nearbyCampfires);
+  const fetchNearbyCampfires = useChatStore((s) => s.fetchNearbyCampfires);
+  const openCampfire = useChatStore((s) => s.openCampfire);
 
   // ---- FOG OF WAR ----
   const {
@@ -178,11 +187,12 @@ function MapScreenInner() {
     sendReply,
   } = useArtifactDetail();
 
-  // ---- PERFORMANCE HOOK (Day 5) ----
+  // ---- PERFORMANCE HOOK ----
   const { handleRegionChange: debouncedRegionChange, forceRefetch } =
     useMapPerformance({
       onFetchArtifacts: fetchNearby,
       onFetchFog: fetchViewportChunks,
+      onFetchCampfires: fetchNearbyCampfires,
       layer: isShadowMode ? "SHADOW" : "LIGHT",
       radius: Config.GEO?.NEARBY_RADIUS_DEFAULT || 1000,
     });
@@ -287,6 +297,13 @@ function MapScreenInner() {
     haptics.success();
     openSheet();
   }, [location, openSheet]);
+
+  const handleOpenCampfire = useCallback(async () => {
+    if (!location) return;
+    haptics.success();
+    const roomId = await openCampfire(location.latitude, location.longitude);
+    if (roomId) setActiveCampfireId(roomId);
+  }, [location, openCampfire]);
 
   const handleMarkerPress = useCallback(
     (artifact: ArtifactMarkerType | string) => {
@@ -452,6 +469,15 @@ function MapScreenInner() {
               />
             );
           })}
+
+        {/* Campfire Beacons */}
+        {nearbyCampfires.map((campfire) => (
+          <CampfireBeacon
+            key={campfire.id}
+            campfire={campfire}
+            onPress={(roomId) => setActiveCampfireId(roomId)}
+          />
+        ))}
       </MapView>
 
       {/* ======== ANIMATIONS & OVERLAYS ======== */}
@@ -468,142 +494,154 @@ function MapScreenInner() {
         isShadow={isShadowMode}
       />
 
-      <OfflineBanner isShadow={isShadowMode} />
+      {!activeCampfireId && (
+        <>
+          <OfflineBanner isShadow={isShadowMode} />
 
-      {/* ======== TOP SINGLE ROW HEADER ======== */}
-      <SafeAreaView
-        edges={["top"]}
-        style={styles.topOverlay}
-        pointerEvents="box-none"
-      >
-        <View style={styles.topSingleRow} pointerEvents="box-none">
-          {/* Nút Layer Toggle (Left) */}
-          <TouchableOpacity
-            style={[
-              styles.compactPill,
-              { backgroundColor: colors.surface }, // Removed marginRight: 8 here
-            ]}
-            onPress={handleLayerToggle}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.iconText}>{isShadowMode ? "🌙" : "☀️"}</Text>
-            <Text style={[styles.pillText, { color: colors.text }]}>
-              {isShadowMode ? "Shadow" : "Light"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Status Badges (Right) */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.statusScrollView}
-            contentContainerStyle={styles.statusScrollRow}
+          {/* ======== TOP SINGLE ROW HEADER ======== */}
+          <SafeAreaView
+            edges={["top"]}
+            style={styles.topOverlay}
             pointerEvents="box-none"
-            bounces={true}
           >
-            {!isConnected && (
-              <View style={[styles.microChip, { backgroundColor: "#EF4444" }]}>
-                <Text style={styles.microChipText}>📡 Offline</Text>
-              </View>
-            )}
-
-            {nearbyArtifacts.length > 0 && (
-              <View
-                style={[styles.microChip, { backgroundColor: colors.surface }]}
+            <View style={styles.topSingleRow} pointerEvents="box-none">
+              {/* Nút Layer Toggle (Left) */}
+              <TouchableOpacity
+                style={[
+                  styles.compactPill,
+                  { backgroundColor: colors.surface }, // Removed marginRight: 8 here
+                ]}
+                onPress={handleLayerToggle}
+                activeOpacity={0.7}
               >
-                <Text style={styles.iconText}>
-                  {isShadowMode ? "👻" : "💌"}
+                <Text style={styles.iconText}>{isShadowMode ? "🌙" : "☀️"}</Text>
+                <Text style={[styles.pillText, { color: colors.text }]}>
+                  {isShadowMode ? "Shadow" : "Light"}
                 </Text>
-                <Text style={[styles.microChipText, { color: colors.primary }]}>
-                  {nearbyArtifacts.length}
-                </Text>
-              </View>
-            )}
+              </TouchableOpacity>
 
-            {isExploring && bufferSize > 0 && (
-              <View
-                style={[styles.microChip, { backgroundColor: colors.surface }]}
+              {/* Status Badges (Right) */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.statusScrollView}
+                contentContainerStyle={styles.statusScrollRow}
+                pointerEvents="box-none"
+                bounces={true}
               >
-                <Text style={styles.iconText}>🗺️</Text>
-                <Text
-                  style={[
-                    styles.microChipText,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {bufferSize} pts
-                </Text>
-              </View>
-            )}
+                {!isConnected && (
+                  <View style={[styles.microChip, { backgroundColor: "#EF4444" }]}>
+                    <Text style={styles.microChipText}>📡 Offline</Text>
+                  </View>
+                )}
 
-            {/* GPSAccuracyIndicator  */}
-            <GPSAccuracyIndicator
-              accuracy={accuracy ?? 0}
-              isShadow={isShadowMode}
-            />
-          </ScrollView>
-        </View>
+                {nearbyArtifacts.length > 0 && (
+                  <View
+                    style={[styles.microChip, { backgroundColor: colors.surface }]}
+                  >
+                    <Text style={styles.iconText}>
+                      {isShadowMode ? "👻" : "💌"}
+                    </Text>
+                    <Text style={[styles.microChipText, { color: colors.primary }]}>
+                      {nearbyArtifacts.length}
+                    </Text>
+                  </View>
+                )}
 
-        {/* Fog Stats */}
-        <View style={styles.fogStatsContainer} pointerEvents="none">
-          <FogStatsBar
-            fogPercentage={fogPercentage}
-            totalExplored={totalStats.totalChunksAllTime}
-            newChunkFlash={newChunkFlash}
-          />
-        </View>
-      </SafeAreaView>
+                {isExploring && bufferSize > 0 && (
+                  <View
+                    style={[styles.microChip, { backgroundColor: colors.surface }]}
+                  >
+                    <Text style={styles.iconText}>🗺️</Text>
+                    <Text
+                      style={[
+                        styles.microChipText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {bufferSize} pts
+                    </Text>
+                  </View>
+                )}
 
-      {/* ======== RIGHT VERTICAL TOOLBAR ======== */}
-      <View style={styles.rightToolbar} pointerEvents="box-none">
-        <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: colors.surface }]}
-          onPress={() => {
-            haptics.selection();
-            isWatching ? stopWatching() : watchLocation();
-          }}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.actionIcon}>{isWatching ? "📍" : "📌"}</Text>
-        </TouchableOpacity>
+                {/* GPSAccuracyIndicator  */}
+                <GPSAccuracyIndicator
+                  accuracy={accuracy ?? 0}
+                  isShadow={isShadowMode}
+                />
+              </ScrollView>
+            </View>
 
-        <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: colors.surface }]}
-          onPress={() => setShowFog(!showFog)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.actionIcon}>{showFog ? "🌫️" : "👁️"}</Text>
-        </TouchableOpacity>
+            {/* Fog Stats */}
+            <View style={styles.fogStatsContainer} pointerEvents="none">
+              <FogStatsBar
+                fogPercentage={fogPercentage}
+                totalExplored={totalStats.totalChunksAllTime}
+                newChunkFlash={newChunkFlash}
+              />
+            </View>
+          </SafeAreaView>
 
-        <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: colors.surface }]}
-          onPress={handleRecenter}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.actionIcon}>🎯</Text>
-        </TouchableOpacity>
-      </View>
+          {/* ======== RIGHT VERTICAL TOOLBAR ======== */}
+          <View style={styles.rightToolbar} pointerEvents="box-none">
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.surface }]}
+              onPress={() => {
+                haptics.selection();
+                isWatching ? stopWatching() : watchLocation();
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionIcon}>{isWatching ? "📍" : "📌"}</Text>
+            </TouchableOpacity>
 
-      {/* ======== BOTTOM FAB ======== */}
-      <SafeAreaView
-        edges={["bottom"]}
-        style={styles.bottomOverlay}
-        pointerEvents="box-none"
-      >
-        <TouchableOpacity
-          style={[
-            styles.createFab,
-            { backgroundColor: isShadowMode ? "#8B5CF6" : "#3B82F6" },
-          ]}
-          onPress={handleCreateArtifact}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.createIcon}>{isShadowMode ? "🌙" : "✉️"}</Text>
-          <Text style={styles.createLabel}>
-            {isShadowMode ? "Drop Shadow" : "Drop Memory"}
-          </Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.surface }]}
+              onPress={() => setShowFog(!showFog)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionIcon}>{showFog ? "🌫️" : "👁️"}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.surface }]}
+              onPress={handleOpenCampfire}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionIcon}>🔥</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.surface }]}
+              onPress={handleRecenter}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionIcon}>🎯</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ======== BOTTOM FAB ======== */}
+          <SafeAreaView
+            edges={["bottom"]}
+            style={styles.bottomOverlay}
+            pointerEvents="box-none"
+          >
+            <TouchableOpacity
+              style={[
+                styles.createFab,
+                { backgroundColor: isShadowMode ? "#8B5CF6" : "#3B82F6" },
+              ]}
+              onPress={handleCreateArtifact}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.createIcon}>{isShadowMode ? "🌙" : "✉️"}</Text>
+              <Text style={styles.createLabel}>
+                {isShadowMode ? "Drop Shadow" : "Drop Memory"}
+              </Text>
+            </TouchableOpacity>
+          </SafeAreaView>
+        </>
+      )}
 
       {/* ======== SHEETS ======== */}
       <CreateArtifactSheet
@@ -625,7 +663,7 @@ function MapScreenInner() {
       />
 
       {/* Error Toast */}
-      {locationError && (
+      {!activeCampfireId && locationError && (
         <LocationStatus
           isLoading={false}
           hasPermission={hasPermission}
@@ -634,6 +672,15 @@ function MapScreenInner() {
           onRetry={retry}
           compact={true}
         />
+      )}
+
+      {activeCampfireId && (
+        <View style={styles.campfireOverlay}>
+          <CampfireScreen
+            roomId={activeCampfireId}
+            onBack={() => setActiveCampfireId(null)}
+          />
+        </View>
       )}
     </View>
   );
@@ -816,5 +863,10 @@ const styles = StyleSheet.create({
     marginLeft: -50,
     marginTop: -50,
     zIndex: 100,
+  },
+  campfireOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+    elevation: 1000,
   },
 });

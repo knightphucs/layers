@@ -5,6 +5,7 @@ Test all auth endpoints: register, login, refresh, password reset
 
 import pytest
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.main import app
@@ -26,6 +27,7 @@ async def client():
 
     # Drop and recreate tables for clean state
     async with engine.begin() as conn:
+        await conn.execute(text("DROP TABLE IF EXISTS reports CASCADE"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 

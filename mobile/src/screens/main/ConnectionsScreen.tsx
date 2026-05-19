@@ -28,6 +28,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../store/authStore";
+import { useChatStore } from "../../store/chatStore";
 import { useConnectionStore } from "../../store/connectionStore";
 import { Colors } from "../../constants/colors";
 import { ConnectionItem, ConnectionLevel } from "../../types/connections";
@@ -43,10 +44,13 @@ import {
 
 interface Props {
   onBack?: () => void;
+  onOpenMessages?: () => void;
 }
 
-export default function ConnectionsScreen({ onBack }: Props) {
+export default function ConnectionsScreen({ onBack, onOpenMessages }: Props) {
   const layer = useAuthStore((s) => s.layer);
+  const currentUser = useAuthStore((s) => s.user);
+  const openChatWithUser = useChatStore((s) => s.openChatWithUser);
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
 
   const {
@@ -149,13 +153,30 @@ export default function ConnectionsScreen({ onBack }: Props) {
     [rejectUpgrade],
   );
 
-  const handleMessage = useCallback((connectionId: string) => {
-    Alert.alert(
-      "💬 Realtime Chat",
-      "Coming in Week 6! For now, continue exchanging letters via Slow Mail.",
-      [{ text: "OK" }],
-    );
-  }, []);
+  const handleMessage = useCallback(
+    async (connectionId: string) => {
+      const connection = connections.find((c) => c.id === connectionId);
+      const otherUserId = connection?.other_user?.id;
+
+      if (!currentUser || !otherUserId) {
+        Alert.alert("Messages", "Unable to open this conversation right now.", [
+          { text: "OK" },
+        ]);
+        return;
+      }
+
+      setProcessingId(connectionId);
+      try {
+        const roomId = await openChatWithUser(otherUserId, currentUser.id);
+        if (roomId) {
+          onOpenMessages?.();
+        }
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [connections, currentUser, onOpenMessages, openChatWithUser],
+  );
 
   const handleFilterSelect = useCallback(
     (f: ConnectionLevel | "all") => {

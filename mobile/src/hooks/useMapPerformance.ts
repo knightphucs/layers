@@ -28,6 +28,8 @@ interface MapPerformanceOptions {
   ) => void;
   /** Fetch fog chunks (throttled) */
   onFetchFog: (region: Region) => void;
+  /** Fetch nearby campfires (throttled) */
+  onFetchCampfires: (lat: number, lng: number, radius: number) => void;
   /** Current layer filter */
   layer: string;
   /** Nearby search radius in meters */
@@ -37,6 +39,7 @@ interface MapPerformanceOptions {
 export function useMapPerformance({
   onFetchArtifacts,
   onFetchFog,
+  onFetchCampfires,
   layer,
   radius = 1000,
 }: MapPerformanceOptions) {
@@ -59,11 +62,19 @@ export function useMapPerformance({
     }, 2000),
   ).current;
 
+  // Throttled campfire fetch: max once per 2 seconds
+  const throttledFetchCampfires = useRef(
+    throttle((lat: number, lng: number, r: number) => {
+      onFetchCampfires(lat, lng, r);
+    }, 2000),
+  ).current;
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       debouncedFetchArtifacts.cancel();
       throttledFetchFog.cancel();
+      throttledFetchCampfires.cancel();
     };
   }, []);
 
@@ -89,6 +100,9 @@ export function useMapPerformance({
 
         // Throttled fog fetch
         throttledFetchFog(region);
+
+        // Throttled campfire fetch
+        throttledFetchCampfires(region.latitude, region.longitude, 500);
       }
     },
     [layer, radius],
@@ -101,6 +115,7 @@ export function useMapPerformance({
     (lat: number, lng: number) => {
       debouncedFetchArtifacts.cancel();
       onFetchArtifacts(lat, lng, radius, layer);
+      onFetchCampfires(lat, lng, 500);
 
       if (lastFetchCenter.current) {
         onFetchFog({
@@ -111,7 +126,7 @@ export function useMapPerformance({
         });
       }
     },
-    [layer, radius, onFetchArtifacts, onFetchFog],
+    [layer, radius, onFetchArtifacts, onFetchFog, onFetchCampfires],
   );
 
   return {
