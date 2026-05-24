@@ -54,6 +54,7 @@ import CreateArtifactSheet from "../../components/create/CreateArtifactSheet";
 import DropAnimation from "../../components/create/DropAnimation";
 import ArtifactDetailSheet from "../../components/detail/ArtifactDetailSheet";
 import { CampfireBeacon } from "../../components/chat";
+import { WaveButton, SynchronicityModal } from "../../components/spark";
 import CampfireScreen from "./CampfireScreen";
 import {
   OfflineBanner,
@@ -618,6 +619,11 @@ function MapScreenInner() {
             >
               <Text style={styles.actionIcon}>🎯</Text>
             </TouchableOpacity>
+
+            <WaveButton
+              latitude={location?.latitude ?? null}
+              longitude={location?.longitude ?? null}
+            />
           </View>
 
           {/* ======== BOTTOM FAB ======== */}
@@ -660,6 +666,8 @@ function MapScreenInner() {
         onUnlockPasscode={unlockPasscode}
         onReply={sendReply}
         isShadow={isShadowMode}
+        userLat={location?.latitude}
+        userLng={location?.longitude}
       />
 
       {/* Error Toast */}
@@ -682,6 +690,8 @@ function MapScreenInner() {
           />
         </View>
       )}
+
+      <SynchronicityModal />
     </View>
   );
 }

@@ -40,8 +40,11 @@ import * as Haptics from "expo-haptics";
 
 import UnlockAnimation from "./UnlockAnimation";
 import ArtifactContent from "./ArtifactContent";
+import { BoostButton } from "../../components/spark";
 import { MARKER_CONFIGS } from "../../types/artifact";
 import { Colors } from "../../constants/colors";
+import { useAuthStore } from "../../store/authStore";
+import { useSocialSparkStore } from "../../store/socialSparkStore";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.65;
@@ -76,6 +79,8 @@ interface Props {
   onUnlockPasscode: (passcode: string) => Promise<boolean>;
   onReply: (content: string) => Promise<void>;
   isShadow: boolean;
+  userLat?: number;
+  userLng?: number;
 }
 
 // ============================================================
@@ -90,7 +95,12 @@ function ArtifactDetailSheetComponent({
   onUnlockPasscode,
   onReply,
   isShadow,
+  userLat,
+  userLng,
 }: Props) {
+  const currentUser = useAuthStore((s) => s.user);
+  const discover = useSocialSparkStore((s) => s.discover);
+
   // States
   const [showUnlockAnim, setShowUnlockAnim] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -167,6 +177,13 @@ function ArtifactDetailSheetComponent({
       setIsUnlocked(true);
     }
   }, [data]);
+
+  // Trigger synchronicity discovery on unlock
+  useEffect(() => {
+    if (isUnlocked && data) {
+      discover(data.id, userLat, userLng);
+    }
+  }, [isUnlocked, data?.id]);
 
   // ========================================================
   // HANDLERS
@@ -353,6 +370,11 @@ function ArtifactDetailSheetComponent({
           createdAt={data.created_at}
           viewCount={data.view_count}
           replyCount={data.reply_count}
+        />
+
+        <BoostButton
+          artifactId={data.id}
+          isOwnArtifact={data.creator_username === currentUser?.username}
         />
 
         {/* Reply section */}
