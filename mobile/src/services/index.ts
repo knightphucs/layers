@@ -15,6 +15,7 @@ export { connectionService } from "./connections";
 export { timeCapsuleService, paperPlaneService } from "./planes_capsules";
 export { chatService, WebSocketClient, buildWSUrl } from "./chat";
 export { socialSparkService } from "./social_spark";
+export { gameService } from "./game";
 
 export type {
   LoginRequest,

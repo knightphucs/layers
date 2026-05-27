@@ -25,6 +25,7 @@ import {
   MessageList,
   MessageInput,
   EmptyChatRoom,
+  TypingIndicator,
 } from "../../components/chat";
 import { ChatMessageWithStatus } from "../../types/chat";
 
@@ -124,8 +125,13 @@ export default function ChatRoomScreen({
             onLoadMore={handleLoadMore}
           />
         )}
-
-        <MessageInput onSend={handleSend} banner={banner} disabled={!user} />
+        <TypingIndicator roomId={roomId} />
+        <MessageInput
+          onSend={handleSend}
+          banner={banner}
+          disabled={!user}
+          roomId={roomId}
+        />
       </KeyboardAvoidingView>
     </View>
   );

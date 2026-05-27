@@ -9,7 +9,7 @@
  * - Keyboard handled by parent (KeyboardAvoidingView wrapping)
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -21,24 +21,82 @@ import {
 import { Colors } from "../../constants/colors";
 import { useAuthStore } from "../../store/authStore";
 import { haptics } from "../../utils/haptics";
+import { useChatStore } from "../../store/chatStore";
 
 const MAX_LEN = 2000;
+const TYPING_PULSE_MS = 2500;
 
 interface MessageInputProps {
   onSend: (text: string) => void;
   disabled?: boolean;
   /** Show banner above input (e.g. "Reconnecting..."). */
   banner?: string | null;
+  /** Pass the active room id to enable typing indicators. */
+  roomId?: string;
 }
 
 function MessageInputComponent({
   onSend,
   disabled,
   banner,
+  roomId,
 }: MessageInputProps) {
   const [text, setText] = useState("");
   const layer = useAuthStore((s) => s.layer);
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
+
+  const startTyping = useChatStore((s) => s.startTyping);
+  const stopTyping = useChatStore((s) => s.stopTyping);
+
+  // Track whether we've already sent a typing_start so we don't spam the WS.
+  const typingActiveRef = useRef(false);
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fireStart = useCallback(() => {
+    if (!roomId) return;
+    if (!typingActiveRef.current) {
+      typingActiveRef.current = true;
+      startTyping(roomId);
+    }
+    // Pulse: re-send start every TYPING_PULSE_MS while user keeps typing —
+    // server's 5s auto-clear will then drop us if we stop touching the field.
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+    pulseTimerRef.current = setTimeout(() => {
+      if (typingActiveRef.current && roomId) startTyping(roomId);
+    }, TYPING_PULSE_MS);
+  }, [roomId, startTyping]);
+
+  const fireStop = useCallback(() => {
+    if (!roomId) return;
+    if (pulseTimerRef.current) {
+      clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = null;
+    }
+    if (typingActiveRef.current) {
+      typingActiveRef.current = false;
+      stopTyping(roomId);
+    }
+  }, [roomId, stopTyping]);
+
+  // Stop typing on unmount
+  useEffect(() => {
+    return () => {
+      fireStop();
+    };
+  }, [fireStop]);
+
+  const handleChange = useCallback(
+    (next: string) => {
+      const sliced = next.slice(0, MAX_LEN);
+      setText(sliced);
+      if (sliced.trim().length === 0) {
+        fireStop();
+      } else {
+        fireStart();
+      }
+    },
+    [fireStart, fireStop],
+  );
 
   const canSend = !disabled && text.trim().length > 0;
 
@@ -48,7 +106,8 @@ function MessageInputComponent({
     haptics.light();
     onSend(trimmed);
     setText("");
-  }, [text, onSend]);
+    fireStop();
+  }, [text, onSend, fireStop]);
 
   return (
     <View
@@ -81,7 +140,7 @@ function MessageInputComponent({
             },
           ]}
           value={text}
-          onChangeText={(t) => setText(t.slice(0, MAX_LEN))}
+          onChangeText={handleChange}
           placeholder="Type a message..."
           placeholderTextColor={colors.textSecondary}
           multiline
@@ -89,6 +148,7 @@ function MessageInputComponent({
           editable={!disabled}
           returnKeyType="default"
           textAlignVertical="center"
+          onBlur={fireStop}
         />
 
         <TouchableOpacity
