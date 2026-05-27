@@ -52,13 +52,21 @@ class MessageResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class ChatRoomUserInfo(BaseModel):
+    """The other user's lightweight profile, denormalized onto room responses
+    so the chat list doesn't need a follow-up /users/{id} round-trip."""
+    id: UUID
+    username: str
+    avatar_url: Optional[str] = None
+
+    model_config = {"from_attributes": True}
 
 class ChatRoomResponse(BaseModel):
     """Chat room summary (list view)."""
     id: UUID
     room_type: ChatRoomType
     status: ChatRoomStatus
-    
+    other_user: Optional[ChatRoomUserInfo] = None
     # DIRECT
     user_a_id: Optional[UUID] = None
     user_b_id: Optional[UUID] = None

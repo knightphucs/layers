@@ -24,6 +24,13 @@ REST ENDPOINTS (for client compatibility and WS fallback):
   GET  /api/v1/chat/ws/stats                  — debug: connection manager state
   POST /api/v1/chat/rooms/direct              — create-or-find room (CONNECTED gate)
   POST /api/v1/chat/rooms/{room_id}/messages  — REST send (fallback for dead WS)
+  
+(CAMPFIRE-ONLY)
+  POST /api/v1/chat/campfires/find-or-create   — find nearest within 50m, or create
+  POST /api/v1/chat/campfires/{room_id}/join   — verify proximity, add to members
+  POST /api/v1/chat/campfires/{room_id}/leave  — mark left_at
+  GET  /api/v1/chat/campfires/nearby           — for map beacons (lat/lng/radius)
+  GET  /api/v1/chat/campfires/{room_id}/members — list members with online status
 
 DESIGN NOTE: We do NOT wrap the WebSocket session in a single long-lived DB session.
 On every inbound message, we open a fresh AsyncSession via the get_db generator.
@@ -61,6 +68,7 @@ from app.schemas.chat import (
     ChatRoomResponse,
     ChatRoomDetail,
     ChatRoomType,
+    ChatRoomUserInfo,
     MessageResponse as ChatMessageSchema,
     MessageListResponse,
     SendMessageRequest,
@@ -78,6 +86,7 @@ from app.schemas.chat import (
     WSServerPong,
     WSCloseCode,
 )
+from app.schemas.game import WSServerTyping
 from app.services.chat_service import ChatService
 
 logger = logging.getLogger(__name__)
@@ -168,19 +177,26 @@ def _build_room_response(room) -> ChatRoomResponse:
     )
 
 
-def _build_room_detail(
+async def _build_room_detail(
+    db: AsyncSession,
     room,
     current_user_id: UUID,
     recent_messages,
 ) -> ChatRoomDetail:
     other_user_id = None
+    other_user_info: Optional[ChatRoomUserInfo] = None
     if room.room_type == ChatRoomType.DIRECT and room.user_a_id and room.user_b_id:
         other_user_id = (
             room.user_b_id if room.user_a_id == current_user_id else room.user_a_id
         )
+        other_map = await ChatService.build_other_user_map(db, [room], current_user_id)
+        if room.id in other_map:
+            other_user_info = ChatRoomUserInfo(**other_map[room.id])
     base = _build_room_response(room)
+    base_dict = base.model_dump()
+    base_dict['other_user'] = other_user_info
     return ChatRoomDetail(
-        **base.model_dump(),
+        **base_dict,
         recent_messages=[ChatMessageSchema.model_validate(m) for m in recent_messages],
         other_user_id=other_user_id,
     )
@@ -201,7 +217,14 @@ async def list_my_rooms(
 ):
     """List all DIRECT rooms the current user is a member of, newest activity first."""
     rooms = await ChatService.get_user_rooms(db, current_user.id, limit=limit)
-    return [_build_room_response(r) for r in rooms]
+    other_map = await ChatService.build_other_user_map(db, rooms, current_user.id)
+    responses = []
+    for r in rooms:
+        resp = _build_room_response(r)
+        if r.id in other_map:
+            resp.other_user = other_map[r.id]
+        responses.append(resp)
+    return responses
 
 # ============================================================
 # REST: get-or-create DIRECT room
@@ -241,7 +264,7 @@ async def create_direct_room(
         f"(other: {other_user_id})"
     )
 
-    return _build_room_detail(room, current_user.id, recent)
+    return await _build_room_detail(db, room, current_user.id, recent)
 
 # ============================================================
 # REST: get one room with recent messages
@@ -276,7 +299,7 @@ async def get_room(
             room.user_b_id if room.user_a_id == current_user.id else room.user_a_id
         )
 
-    return _build_room_detail(room, current_user.id, recent)
+    return await _build_room_detail(db, room, current_user.id, recent)
 
 
 # ============================================================
@@ -423,7 +446,7 @@ async def find_or_create_campfire(
     logger.info(
         f"Campfire {'created' if created else 'joined'} {room.id} by {current_user.id}"
     )
-    return _build_room_detail(room, current_user.id, recent)
+    return await _build_room_detail(db, room, current_user.id, recent)
 
 
 # ============================================================
@@ -455,7 +478,7 @@ async def join_campfire(
             detail="Campfire not found",
         )
     recent = await ChatService.get_recent_messages(db, room_id, limit=20)
-    return _build_room_detail(room, current_user.id, recent)
+    return await _build_room_detail(db, room, current_user.id, recent)
 
 
 # ============================================================
@@ -713,6 +736,19 @@ async def chat_websocket(
                     websocket,
                     WSServerPong().model_dump(mode="json"),
                 )
+                continue
+            
+            # ---- typing indicator (for campfire game) ----
+            if payload_type in ("typing_start", "typing_stop"):
+                event = "start" if payload_type == "typing_start" else "stop"
+                try:
+                    await manager.broadcast(
+                        room_id,
+                        WSServerTyping(event=event, user_id=user_id).model_dump(mode="json"),
+                        exclude=websocket,
+                    )
+                except Exception as e:
+                    logger.warning(f"WS typing broadcast failed: {e}")
                 continue
 
             # ---- message ----

@@ -22,6 +22,17 @@ from app.models.artifact import Artifact, ArtifactReply
 from app.models.inventory import InventoryItem, MailQueue
 from app.models.connection import Connection
 from app.models.chat import ChatRoom, Message, CampfireMember
+from app.models.social_spark import (
+    ArtifactBoost,
+    Wave,
+    ArtifactDiscovery,
+    SynchronicityEvent,
+)
+from app.models.game import (
+    CampfireGame,
+    CampfireGameRound,
+    CampfireGameAnswer,
+)
 
 # Alembic Config object
 config = context.config

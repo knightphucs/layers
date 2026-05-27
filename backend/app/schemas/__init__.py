@@ -87,6 +87,19 @@ from app.schemas.social_spark import (
     SynchronicityListResponse,
 )
 
+from app.schemas.game import (
+    GameState as GameStateSchema,
+    RoundState as RoundStateSchema,
+    AnswerSubmitRequest,
+    VoteCastRequest,
+    GameAnswerResponse,
+    GameRoundResponse,
+    GameResponse,
+    WSGameEvent,
+    WSClientTyping,
+    WSServerTyping,
+)
+
 __all__ = [
     # Auth
     "UserRegister",
@@ -166,4 +179,16 @@ __all__ = [
     "SynchronicityMatch",
     "SynchronicityListItem",
     "SynchronicityListResponse",
+    
+    # Game
+    "GameStateSchema",
+    "RoundStateSchema",
+    "AnswerSubmitRequest",
+    "VoteCastRequest",
+    "GameAnswerResponse",
+    "GameRoundResponse",
+    "GameResponse",
+    "WSGameEvent",
+    "WSClientTyping",
+    "WSServerTyping",
 ]

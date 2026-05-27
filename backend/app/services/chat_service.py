@@ -186,7 +186,7 @@ class ChatService:
         return room
     
     # ============================================================
-    # CAMPFIRE LOOKUP / CREATION (Day 3)
+    # CAMPFIRE LOOKUP / CREATION
     # ============================================================
 
     @staticmethod
@@ -297,7 +297,7 @@ class ChatService:
         return room, True
 
     # ============================================================
-    # CAMPFIRE MEMBERSHIP (Day 3)
+    # CAMPFIRE MEMBERSHIP
     # ============================================================
 
     @staticmethod
@@ -437,7 +437,7 @@ class ChatService:
         return result.scalar_one_or_none() is not None
 
     # ============================================================
-    # CAMPFIRE DISCOVERY (Day 3 — for map beacons)
+    # CAMPFIRE DISCOVERY
     # ============================================================
 
     @staticmethod
@@ -476,7 +476,7 @@ class ChatService:
         return [(row[0], row[1]) for row in result.all()]
 
     # ============================================================
-    # EXPIRY MANAGEMENT (Day 3)
+    # EXPIRY MANAGEMENT
     # ============================================================
 
     @staticmethod
@@ -742,3 +742,57 @@ class ChatService:
         if room.room_type == ChatRoomType.CAMPFIRE:
             return await ChatService.is_campfire_member(db, room.id, user_id)
         return True
+
+    # ============================================================
+    # OTHER-USER PROFILE LOOKUP
+    # ============================================================
+    # DIRECT room responses should carry the other participant's username
+    # + avatar_url so the chat list doesn't need follow-up /users/{id} calls.
+
+    @staticmethod
+    async def build_other_user_map(
+        db: AsyncSession,
+        rooms: List[ChatRoom],
+        current_user_id: uuid.UUID,
+    ) -> dict:
+        """
+        Given a list of rooms and the current user, return:
+            { room.id (UUID) : {"id": uuid, "username": str, "avatar_url": str|None} }
+        for every DIRECT room. CAMPFIRE rooms are skipped (they have members,
+        not a single 'other_user' — see /chat/campfires/{id}/members instead).
+
+        ONE bulk SELECT, regardless of room count.
+        """
+        # Lazy import to avoid a circular dep at module-load time
+        from app.models.user import User
+
+        target_user_ids = set()
+        room_to_other = {}
+        for r in rooms:
+            if r.room_type != ChatRoomType.DIRECT:
+                continue
+            if not r.user_a_id or not r.user_b_id:
+                continue
+            other = r.user_b_id if r.user_a_id == current_user_id else r.user_a_id
+            room_to_other[r.id] = other
+            target_user_ids.add(other)
+
+        if not target_user_ids:
+            return {}
+
+        result = await db.execute(
+            select(User).where(User.id.in_(target_user_ids))
+        )
+        users_by_id = {u.id: u for u in result.scalars().all()}
+
+        out = {}
+        for room_id, other_id in room_to_other.items():
+            user = users_by_id.get(other_id)
+            if user is None:
+                continue
+            out[room_id] = {
+                "id": user.id,
+                "username": user.username,
+                "avatar_url": getattr(user, "avatar_url", None),
+            }
+        return out
