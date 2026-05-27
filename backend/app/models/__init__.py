@@ -8,13 +8,26 @@ from app.models.location import Location, ExploredChunk, LayerType, LocationCate
 from app.models.artifact import Artifact, ArtifactReply, ContentType, Visibility, ArtifactStatus
 from app.models.connection import Connection, ConnectionStatus
 from app.models.inventory import InventoryItem, MailQueue
-from app.models.chat import ChatRoom, Message, ChatRoomType, ChatRoomStatus, CampfireMember
+from app.models.chat import (
+    ChatRoom, 
+    Message, 
+    ChatRoomType,
+    ChatRoomStatus, 
+    CampfireMember
+)
 from app.models.notification import DeviceToken, NotificationPreference, NotificationHistory
 from app.models.social_spark import (
     ArtifactBoost,
     Wave,
     ArtifactDiscovery,
     SynchronicityEvent,
+)
+from app.models.game import (
+    CampfireGame, 
+    CampfireGameRound, 
+    CampfireGameAnswer,
+    GameState, 
+    RoundState
 )
 
 __all__ = [
@@ -60,4 +73,11 @@ __all__ = [
     "Wave",
     "ArtifactDiscovery",
     "SynchronicityEvent",
+    
+    # Campfire Games
+    "CampfireGame",
+    "CampfireGameRound",
+    "CampfireGameAnswer",
+    "GameState",
+    "RoundState",
 ]
