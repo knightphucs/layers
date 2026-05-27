@@ -28,6 +28,12 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface ChatRoomUserInfo {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+}
+
 export interface ChatRoom {
   id: string;
   room_type: ChatRoomType;
@@ -43,6 +49,7 @@ export interface ChatRoom {
   message_count: number;
   last_activity_at: string;
   created_at: string;
+  other_user?: ChatRoomUserInfo | null; // populated client-side for convenience
 }
 
 export interface ChatRoomDetail extends ChatRoom {
@@ -128,7 +135,6 @@ export interface ChatMessageWithStatus extends ChatMessage {
 /** Room with the other user's profile attached (denormalized for list view). */
 export interface ChatRoomItem extends ChatRoom {
   other_user_id: string | null;
-  other_user?: Pick<User, "id" | "username" | "avatar_url"> | null;
   last_message_preview?: string | null;
 }
 
@@ -139,14 +145,26 @@ export interface ChatRoomItem extends ChatRoom {
 // Client → Server
 export type WSClientMessage =
   | { type: "message"; content: string }
-  | { type: "ping" };
+  | { type: "ping" }
+  | { type: "typing_start" }
+  | { type: "typing_stop" };
 
 // Server → Client (discriminated by `type`)
 export type WSServerMessage =
   | { type: "message"; data: ChatMessage }
   | { type: "presence"; event: "join" | "leave"; user_id: string }
   | { type: "error"; code: string; message: string }
-  | { type: "pong" };
+  | { type: "pong" }
+  | { type: "typing"; event: "start" | "stop"; user_id: string }
+  | {
+      type: "game_event";
+      event: string;
+      game_id: string;
+      room_id: string;
+      actor_user_id?: string | null;
+      phase?: string | null;
+      round_id?: string | null;
+    };
 
 /** Connection state tracked by the WebSocketClient. */
 export type WSConnectionState =

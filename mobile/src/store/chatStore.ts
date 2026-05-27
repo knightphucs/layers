@@ -82,6 +82,11 @@ function insertMessage(
 // STORE
 // ============================================================
 
+// Module-scoped auto-clear timers for stale typing indicators.
+// Keys are `${roomId}::${userId}`. Lives outside the store so it doesn't
+// trigger re-renders when timers are added/cleared.
+const _typingTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
 interface ChatState {
   // ---- State ----
   rooms: ChatRoomItem[];
@@ -102,6 +107,8 @@ interface ChatState {
   membersByRoom: Record<string, CampfireMemberInfo[]>;
   isLoadingNearby: boolean;
   isLoadingMembers: boolean;
+
+  typingUsersByRoom: Record<string, Set<string>>;
 
   // ---- Actions ----
   fetchRooms: (currentUserId: string) => Promise<void>;
@@ -137,6 +144,9 @@ interface ChatState {
   leaveCampfire: (roomId: string) => Promise<void>;
   refreshMembers: (roomId: string) => Promise<void>;
 
+  startTyping: (roomId: string) => void;
+  stopTyping: (roomId: string) => void;
+
   // ---- Internal helpers ----
   _handleFrame: (frame: WSServerMessage) => void;
 }
@@ -158,7 +168,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   membersByRoom: {},
   isLoadingNearby: false,
   isLoadingMembers: false,
-
+  typingUsersByRoom: {},
   // ============================================================
   // fetchRooms
   // ============================================================
@@ -281,6 +291,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
   leaveChat: () => {
     const client = get().wsClient;
     if (client) client.close();
+    const roomId = get().activeRoomId;
+    if (roomId) {
+      Object.keys(_typingTimers).forEach((k) => {
+        if (k.startsWith(`${roomId}::`)) {
+          clearTimeout(_typingTimers[k]);
+          delete _typingTimers[k];
+        }
+      });
+      set((state) => ({
+        typingUsersByRoom: { ...state.typingUsersByRoom, [roomId]: new Set() },
+      }));
+    }
     set({ wsClient: null, wsState: "idle", activeRoomId: null });
   },
 
@@ -523,6 +545,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   reset: () => {
     const client = get().wsClient;
     if (client) client.close();
+    Object.keys(_typingTimers).forEach((k) => {
+      clearTimeout(_typingTimers[k]);
+      delete _typingTimers[k];
+    });
     set({
       rooms: [],
       messagesByRoom: {},
@@ -539,7 +565,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
       membersByRoom: {},
       isLoadingNearby: false,
       isLoadingMembers: false,
+      typingUsersByRoom: {},
     });
+  },
+
+  // Per-room, per-user auto-clear timers so stale "typing" indicators
+  // disappear even if the typing_stop frame is dropped on the network.
+  // Kept in a closure-scoped map (not store state) to avoid render churn.
+
+  startTyping: (roomId) => {
+    const client = get().wsClient;
+    if (!client) return;
+    try {
+      client.send({ type: "typing_start" } as any);
+    } catch {
+      /* best-effort */
+    }
+  },
+
+  stopTyping: (roomId) => {
+    const client = get().wsClient;
+    if (!client) return;
+    try {
+      client.send({ type: "typing_stop" } as any);
+    } catch {
+      /* best-effort */
+    }
   },
 
   // ============================================================
@@ -589,9 +640,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
           )
           .sort((a, b) => (a.last_activity_at < b.last_activity_at ? 1 : -1));
 
+        const senderId = incoming.sender_id;
+        const nextTyping = { ...state.typingUsersByRoom };
+        if (nextTyping[roomId] && nextTyping[roomId].has(senderId)) {
+          const cloned = new Set(nextTyping[roomId]);
+          cloned.delete(senderId);
+          nextTyping[roomId] = cloned;
+        }
+
         return {
           messagesByRoom: { ...state.messagesByRoom, [roomId]: nextList },
           rooms: nextRooms,
+          typingUsersByRoom: nextTyping,
         };
       });
       return;
@@ -615,6 +675,68 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
-    // pong → ignore
+    if (frame.type === "typing") {
+      const activeRoomId = get().activeRoomId;
+      if (!activeRoomId) return;
+      const userId = frame.user_id;
+
+      set((state) => {
+        const current =
+          state.typingUsersByRoom[activeRoomId] || new Set<string>();
+        const next = new Set(current);
+        if (frame.event === "start") {
+          next.add(userId);
+        } else {
+          next.delete(userId);
+        }
+        return {
+          typingUsersByRoom: {
+            ...state.typingUsersByRoom,
+            [activeRoomId]: next,
+          },
+        };
+      });
+
+      // Safety net: auto-clear after 5s in case the stop frame is lost.
+      if (frame.event === "start") {
+        const key = `${activeRoomId}::${userId}`;
+        clearTimeout(_typingTimers[key]);
+        _typingTimers[key] = setTimeout(() => {
+          set((state) => {
+            const cur = state.typingUsersByRoom[activeRoomId];
+            if (!cur || !cur.has(userId)) return {};
+            const next = new Set(cur);
+            next.delete(userId);
+            return {
+              typingUsersByRoom: {
+                ...state.typingUsersByRoom,
+                [activeRoomId]: next,
+              },
+            };
+          });
+          delete _typingTimers[key];
+        }, 5000);
+      } else {
+        const key = `${activeRoomId}::${userId}`;
+        clearTimeout(_typingTimers[key]);
+        delete _typingTimers[key];
+      }
+      return;
+    }
+
+    // Day 5 — game events: refetch full state (gameStore is the source of truth)
+    if (frame.type === "game_event") {
+      try {
+        // Lazy require to avoid a cyclic import at module load
+        const { useGameStore } = require("./gameStore");
+        const activeRoomId = get().activeRoomId;
+        if (activeRoomId) {
+          useGameStore.getState().fetchGame(activeRoomId);
+        }
+      } catch (e) {
+        if (__DEV__) console.warn("[chatStore] game_event refetch failed:", e);
+      }
+      return;
+    }
   },
 }));

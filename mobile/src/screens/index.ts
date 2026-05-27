@@ -12,3 +12,15 @@ export { default as ProfileScreen } from "./main/ProfileScreen";
 export { default as MessagesContainer } from "./main/MessagesContainer";
 export { default as ChatListScreen } from "./main/ChatListScreen";
 export { default as ChatRoomScreen } from "./main/ChatRoomScreen";
+
+// Inbox Screens
+export { default as InboxScreen } from "./main/InboxScreen";
+export { default as NotificationPreferencesScreen } from "./main/NotificationPreferencesScreen";
+
+// Connection Screens
+export { default as ConnectionsScreen } from "./main/ConnectionsScreen";
+export { default as TimeCapsuleScreen } from "./main/TimeCapsuleScreen";
+export { default as PaperPlaneScreen } from "./main/PaperPlaneScreen";
+
+// Campfire Screens
+export { default as CampfireScreen } from "./main/CampfireScreen";

@@ -10,3 +10,4 @@ export { EmptyChatList, EmptyChatRoom } from "./EmptyChat";
 export { default as CampfireHeader } from "./CampfireHeader";
 export { default as CampfireBeacon } from "./CampfireBeacon";
 export { default as MembersList } from "./MembersList";
+export { default as TypingIndicator } from "./TypingIndicator";

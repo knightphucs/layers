@@ -14,14 +14,16 @@
  * Reuses MessageList + MessageInput.
  */
 
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, { useEffect, useMemo, useCallback, useState } from "react";
 import {
   View,
+  Text,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
+  TouchableOpacity,
 } from "react-native";
 import { Colors } from "../../constants/colors";
 import { useAuthStore } from "../../store/authStore";
@@ -32,8 +34,11 @@ import {
   MessageList,
   MessageInput,
   EmptyChatRoom,
+  TypingIndicator,
 } from "../../components/chat";
 import { CampfireMemberInfo, ChatMessageWithStatus } from "../../types/chat";
+import { useGameStore } from "../../store/gameStore";
+import { GamePanel } from "../../components/game";
 
 interface CampfireScreenProps {
   roomId: string;
@@ -67,6 +72,14 @@ export default function CampfireScreen({
   const loadOlderMessages = useChatStore((s) => s.loadOlderMessages);
   const refreshMembers = useChatStore((s) => s.refreshMembers);
 
+  const activeGame = useGameStore((s) => s.game);
+  const hasActiveGame =
+    !!activeGame &&
+    activeGame.state !== "COMPLETED" &&
+    activeGame.room_id === roomId;
+
+  const [gameOpen, setGameOpen] = useState<boolean>(false);
+
   // Mount: open WS + load members. Unmount: close WS (but stay a member).
   useEffect(() => {
     if (!user) return;
@@ -77,6 +90,11 @@ export default function CampfireScreen({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, user?.id]);
+
+  // Auto-open the drawer when a game becomes active (started by anyone in the room).
+  useEffect(() => {
+    if (hasActiveGame) setGameOpen(true);
+  }, [hasActiveGame]);
 
   // Derived counts
   const onlineCount = useMemo(
@@ -129,6 +147,30 @@ export default function CampfireScreen({
     return null;
   }, [wsState]);
 
+  // Game drawer toggle row — also acts as an entry point if no game is running
+  const renderGameToggle = () => (
+    <TouchableOpacity
+      onPress={() => setGameOpen((v) => !v)}
+      activeOpacity={0.7}
+      style={[
+        styles.gameToggle,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      <Text style={[styles.gameToggleText, { color: colors.text }]}>
+        {hasActiveGame
+          ? "🔥 Truth or Dare — round in progress"
+          : "🔥 Truth or Dare"}
+      </Text>
+      <Text style={[styles.gameToggleChevron, { color: colors.textSecondary }]}>
+        {gameOpen ? "▲" : "▼"}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <CampfireHeader
@@ -141,6 +183,14 @@ export default function CampfireScreen({
       />
 
       <MembersList members={members} />
+
+      {renderGameToggle()}
+
+      {gameOpen && (
+        <View style={[styles.gameDrawer, { borderColor: colors.border }]}>
+          <GamePanel roomId={roomId} />
+        </View>
+      )}
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -164,7 +214,14 @@ export default function CampfireScreen({
           />
         )}
 
-        <MessageInput onSend={handleSend} banner={banner} disabled={!user} />
+        <TypingIndicator roomId={roomId} />
+
+        <MessageInput
+          onSend={handleSend}
+          banner={banner}
+          disabled={!user}
+          roomId={roomId}
+        />
       </KeyboardAvoidingView>
     </View>
   );
@@ -181,5 +238,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  gameToggle: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+  },
+  gameToggleText: { fontSize: 14, fontWeight: "600" },
+  gameToggleChevron: { fontSize: 12 },
+  gameDrawer: {
+    borderBottomWidth: 1,
+    height: 360,
   },
 });
