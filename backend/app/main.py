@@ -11,6 +11,8 @@ import logging
 from app.core.config import settings
 from app.core.database import init_db, close_db
 from app.api.v1.router import api_router
+from app.core.rate_limit import RateLimitMiddleware
+from app.core.redis_client import close_redis, init_redis, is_redis_available
 
 
 # Configure logging
@@ -39,10 +41,18 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Database initialization failed: {e}")
         raise
     
+    # Initialize Redis (cache, rate limiting, pub/sub).
+    # Does not raise if Redis is down — app runs in degraded mode.
+    await init_redis()
+    if not is_redis_available():
+        logger.warning("⚠️ Redis is not available. Caching and rate limiting will be degraded.")
+    
     yield
     
     # Shutdown
     logger.info("🛑 Shutting down LAYERS API...")
+    await close_redis()
+    logger.info("✅ Redis connection closed")
     await close_db()
     logger.info("✅ Database connection closed")
 
@@ -92,23 +102,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Rate limiting (Redis-backed sliding window, in-memory fallback).
+app.add_middleware(RateLimitMiddleware)
 
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
 
 
 # Health check endpoint
-# @app.get("/health", tags=["Health"])
-# async def health_check():
-#     """
-#     Health check endpoint.
-#     Returns service status for monitoring.
-#     """
-#     return {
-#         "status": "healthy",
-#         "service": settings.app_name,
-#         "version": settings.app_version
-#     }
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """
+    Health check endpoint.
+    Returns service status for monitoring.
+    """
+    return {
+        "status": "healthy",
+        "service": settings.app_name,
+        "version": settings.app_version,
+        "redis": "up" if is_redis_available() else "degraded",
+    }
 
 
 # Hello endpoint
@@ -123,6 +136,18 @@ async def greeting():
         "description": "See /docs for API documentation."
     }
 
+# Root endpoint
+@app.get("/", tags=["Root"])
+async def root():
+    """
+    Root endpoint with API information.
+    """
+    return {
+        "message": "🌆 Welcome to LAYERS API",
+        "tagline": "See the hidden layers of your city",
+        "version": settings.app_version,
+        "docs": "/docs" if settings.debug else "Disabled in production",
+    }
 
 if __name__ == "__main__":
     import uvicorn

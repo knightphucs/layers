@@ -26,8 +26,8 @@ pydantic-settings==2.1.0
 email-validator==2.1.0
 
 # ============ Redis & Caching ============
-redis==5.0.1
-aioredis==2.0.1
+redis[hiredis]>=5.0,<6
+fakeredis>=2.20
 
 # ============ File Storage ============
 minio==7.2.3
