@@ -13,6 +13,7 @@ from app.core.database import init_db, close_db
 from app.api.v1.router import api_router
 from app.core.rate_limit import RateLimitMiddleware
 from app.core.redis_client import close_redis, init_redis, is_redis_available
+from app.core.ws_manager import manager
 
 
 # Configure logging
@@ -46,11 +47,16 @@ async def lifespan(app: FastAPI):
     await init_redis()
     if not is_redis_available():
         logger.warning("⚠️ Redis is not available. Caching and rate limiting will be degraded.")
+        
+    # Start the WebSocket pub/sub bridge (one listener per worker) so chat +
+    # campfire broadcasts reach clients connected to any worker.
+    await manager.start_pubsub()
     
     yield
     
     # Shutdown
     logger.info("🛑 Shutting down LAYERS API...")
+    await manager.stop_pubsub()
     await close_redis()
     logger.info("✅ Redis connection closed")
     await close_db()
