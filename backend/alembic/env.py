@@ -33,6 +33,7 @@ from app.models.game import (
     CampfireGameRound,
     CampfireGameAnswer,
 )
+from app.models.xp_event import XPEvent
 
 # Alembic Config object
 config = context.config
