@@ -25,6 +25,8 @@ from app.core.database import get_db
 from app.api.v1.auth import get_current_user  # ← Lives in auth.py!
 from app.models.user import User
 from app.services.artifact_service import ArtifactService
+from app.services.xp_service import XPService, XPEventType
+from app.services.quest_service import QuestService, QuestTrigger
 from app.utils.anti_cheat import validate_location, validate_location_update
 from app.schemas.artifact import (
     ArtifactCreate,
@@ -67,6 +69,10 @@ async def create_artifact(
         artifact = await ArtifactService.create_artifact(
             db=db, data=data, user_id=current_user.id,
         )
+        xp = await XPService.award(db, current_user.id, XPEventType.ARTIFACT_CREATE, ref_id=artifact.id)
+        quests_completed = await QuestService.report_progress(
+            db, current_user.id, QuestTrigger.ARTIFACT_CREATE
+        )
         return {
             "id": str(artifact.id),
             "content_type": artifact.content_type,
@@ -75,6 +81,8 @@ async def create_artifact(
             "status": artifact.status,
             "created_at": artifact.created_at,
             "message": "Artifact created! 🎯",
+            "xp": xp,
+            "quests_completed": quests_completed,
         }
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -192,6 +200,10 @@ async def unlock_artifact(
         )
         if not result:
             raise HTTPException(status_code=404, detail="Artifact not found")
+        result["xp"] = await XPService.award(db, current_user.id, XPEventType.ARTIFACT_UNLOCK, ref_id=artifact_id)
+        result["quests_completed"] = await QuestService.report_progress(
+            db, current_user.id, QuestTrigger.ARTIFACT_UNLOCK
+        )
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -225,7 +237,7 @@ async def reply_to_artifact(
 ):
     await validate_location_update(current_user.id, lat, lng, db)
     try:
-        return await ArtifactService.reply_to_artifact(
+        result = await ArtifactService.reply_to_artifact(
             db=db,
             artifact_id=artifact_id,
             data=data,
@@ -233,6 +245,11 @@ async def reply_to_artifact(
             user_lat=lat,
             user_lng=lng,
         )
+        result["xp"] = await XPService.award(db, current_user.id, XPEventType.REPLY_SENT)
+        result["quests_completed"] = await QuestService.report_progress(
+            db, current_user.id, QuestTrigger.REPLY_SENT
+        )
+        return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -304,9 +321,14 @@ async def create_paper_plane(
     current_user: User = Depends(validate_location),
 ):
     try:
-        return await ArtifactService.create_paper_plane(
+        result = await ArtifactService.create_paper_plane(
             db=db, data=data, user_id=current_user.id,
         )
+        result["xp"] = await XPService.award(db, current_user.id, XPEventType.ARTIFACT_CREATE)
+        result["quests_completed"] = await QuestService.report_progress(
+            db, current_user.id, QuestTrigger.PAPER_PLANE
+        )
+        return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

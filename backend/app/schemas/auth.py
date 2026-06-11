@@ -86,6 +86,8 @@ class UserResponse(BaseModel):
     reputation_score: int
     is_verified: bool
     created_at: datetime
+    current_streak: int
+    longest_streak: int
 
     class Config:
         from_attributes = True  # Allows creating from SQLAlchemy model

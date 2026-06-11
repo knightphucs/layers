@@ -100,6 +100,22 @@ from app.schemas.game import (
     WSServerTyping,
 )
 
+from app.schemas.xp import (
+    RankInfo,
+    LevelProgress,
+    XPAwardResult,
+    XPHistoryItem,
+    XPHistoryResponse,
+    XPRewardEntry,
+)
+
+from app.schemas.quest import (
+    QuestItem,
+    QuestStreak,
+    QuestTodayResponse,
+    QuestCompletedItem,
+)
+
 __all__ = [
     # Auth
     "UserRegister",
@@ -191,4 +207,19 @@ __all__ = [
     "WSGameEvent",
     "WSClientTyping",
     "WSServerTyping",
+    
+    # XP Events
+    "XPEvent",
+    "RankInfo",
+    "LevelProgress",
+    "XPAwardResult",
+    "XPHistoryItem",
+    "XPHistoryResponse",
+    "XPRewardEntry",
+    
+    # Quest
+    "QuestItem",
+    "QuestStreak",
+    "QuestTodayResponse",
+    "QuestCompletedItem",
 ]

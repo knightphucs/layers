@@ -24,6 +24,8 @@ from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
 from app.services.exploration_service import ExplorationService
+from app.services.xp_service import XPService, XPEventType
+from app.services.quest_service import QuestService, QuestTrigger
 from app.utils.anti_cheat import validate_location, validate_location_update
 
 
@@ -78,12 +80,18 @@ async def explore_position(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(validate_location),
 ):
-    return await ExplorationService.explore_at(
+    result = await ExplorationService.explore_at(
         db=db,
         user_id=current_user.id,
         latitude=data.latitude,
         longitude=data.longitude,
     )
+    if result.get("is_new"):
+        result["xp"] = await XPService.award(db, current_user.id, XPEventType.EXPLORE_NEW_CHUNK)
+        result["quests_completed"] = await QuestService.report_progress(
+            db, current_user.id, QuestTrigger.EXPLORE_CHUNK
+        )
+    return result
 
 
 # ============================================================
@@ -114,11 +122,20 @@ async def batch_explore(
         raise HTTPException(status_code=422, detail="Each coordinate needs lat/lng or latitude/longitude")
     await validate_location_update(current_user.id, lat, lng, db)
     try:
-        return await ExplorationService.batch_explore(
+        result = await ExplorationService.batch_explore(
             db=db,
             user_id=current_user.id,
             coordinates=data.coordinates,
         )
+        if result.get("new_chunks", 0) > 0:
+            result["xp"] = await XPService.award(
+                db, current_user.id, XPEventType.EXPLORE_NEW_CHUNK,
+                amount=result["new_chunks"] * XPService.amount_for(XPEventType.EXPLORE_NEW_CHUNK),
+            )
+            result["quests_completed"] = await QuestService.report_progress(
+                db, current_user.id, QuestTrigger.EXPLORE_CHUNK
+            )
+        return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

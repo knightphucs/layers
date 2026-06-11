@@ -50,7 +50,7 @@ class TestUserPresence:
         u = uuid4()
         await presence.mark_online(u, ttl=1)
         assert await presence.is_online(u) is True
-        await fake_redis.expire(presence._user_key(u), 0)  # force expire
+        await fake_redis.delete(presence._user_key(u))  # simulate TTL expiry
         assert await presence.is_online(u) is False
 
     async def test_filter_online_subset(self, fake_redis):

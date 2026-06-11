@@ -24,7 +24,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
+from app.models.connection import Connection
 from app.services.connection_service import ConnectionService
+from app.services.xp_service import XPService, XPEventType
+from app.services.quest_service import QuestService, QuestTrigger
 from app.schemas.connection import (
     ConnectionListResponse,
     ConnectionStatsResponse,
@@ -108,11 +111,17 @@ async def request_upgrade(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await ConnectionService.request_upgrade(
+        result = await ConnectionService.request_upgrade(
             db=db,
             user_id=current_user.id,
             connection_id=connection_id,
         )
+        if result.get("upgraded"):
+            conn = await db.get(Connection, connection_id)
+            for uid in (conn.user_a_id, conn.user_b_id):
+                await XPService.award(db, uid, XPEventType.CONNECTION_UPGRADE)
+                await QuestService.report_progress(db, uid, QuestTrigger.CONNECTION_UPGRADE)
+        return result
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
@@ -134,11 +143,17 @@ async def accept_upgrade(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await ConnectionService.request_upgrade(
+        result = await ConnectionService.request_upgrade(
             db=db,
             user_id=current_user.id,
             connection_id=connection_id,
         )
+        if result.get("upgraded"):
+            conn = await db.get(Connection, connection_id)
+            for uid in (conn.user_a_id, conn.user_b_id):
+                await XPService.award(db, uid, XPEventType.CONNECTION_UPGRADE)
+                await QuestService.report_progress(db, uid, QuestTrigger.CONNECTION_UPGRADE)
+        return result
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
