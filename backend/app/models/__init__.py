@@ -80,4 +80,10 @@ __all__ = [
     "CampfireGameAnswer",
     "GameState",
     "RoundState",
+    
+    # XP Events
+    "XPEvent",
+    
+    # Quest Completions
+    "QuestCompletion",
 ]

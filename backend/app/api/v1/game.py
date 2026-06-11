@@ -35,6 +35,8 @@ from app.schemas.game import (
     WSGameEvent,
 )
 from app.services.game_service import GameService
+from app.services.xp_service import XPService, XPEventType
+from app.services.quest_service import QuestService, QuestTrigger
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +219,9 @@ async def reveal_round(
     current_user: User = Depends(get_current_user),
 ):
     rnd = await GameService.reveal_round(db, room_id, current_user.id)
+    if rnd.winner_user_id:
+        await XPService.award(db, rnd.winner_user_id, XPEventType.CAMPFIRE_GAME_WIN)
+        await QuestService.report_progress(db, rnd.winner_user_id, QuestTrigger.GAME_WIN)
     state = await _get_state_or_404(db, room_id, current_user.id)
     await _broadcast_event(
         room_id, "round_revealed",

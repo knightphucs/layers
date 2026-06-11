@@ -18,6 +18,7 @@ from app.api.v1.chat import router as chat_router
 from app.api.v1.social_spark import router as social_spark_router
 from app.api.v1.game import router as game_router
 from app.api.v1.xp import router as xp_router
+from app.api.v1.quests import router as quests_router
 
 api_router = APIRouter()
 
@@ -35,7 +36,7 @@ api_router.include_router(chat_router)
 api_router.include_router(social_spark_router)
 api_router.include_router(game_router)
 api_router.include_router(xp_router)
-
+api_router.include_router(quests_router)
 
 @api_router.get("/", tags=["API Info"])
 async def api_info():
@@ -46,7 +47,7 @@ async def api_info():
         "api_version": "v1",
         "status": "active",
         "week": 7,
-        "day": 3,
+        "day": 4,
         "modules": {
             "auth": "✅ Active (Week 1)",
             "map": "✅ Active (Day 1 — PostGIS geo-queries)",
@@ -60,11 +61,12 @@ async def api_info():
             "social_spark": "✅ Active (Week 6 Day 4 — boost/wave/synchronicity)",
             "game": "✅ Active (Week 6 Day 5 — Truth or Dare in campfires)",
             "xp": "✅ Active (Week 7 Day 3 — XP system)",
+            "quests": "✅ Active (Week 7 Day 4 — Quest system)",
             "commerce": "🚧 Coming Week 7",
         },
         "websocket_endpoints": [
             "WS /api/v1/chat/ws/{room_id}?token={jwt}",
         ],
-        "endpoints_total": 72,
-        "test_files": 18,
+        "endpoints_total": 73,
+        "test_files": 19,
     }
