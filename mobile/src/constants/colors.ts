@@ -9,6 +9,7 @@ export const Colors = {
     secondary: "#EC4899", // Pink - accent
     background: "#F8FAFC", // Light gray background
     surface: "#FFFFFF", // White cards/surfaces
+    card: "#FFFFFF", // Alias for surface (component token)
     text: "#1E293B", // Dark text
     textSecondary: "#64748B", // Gray text
     border: "#E2E8F0", // Light borders
@@ -23,6 +24,7 @@ export const Colors = {
     secondary: "#F43F5E", // Rose - danger/excitement
     background: "#0F172A", // Very dark blue
     surface: "#1E293B", // Dark cards
+    card: "#1B1B2F", // Slightly elevated surface for cards
     text: "#F8FAFC", // Light text
     textSecondary: "#94A3B8", // Muted text
     border: "#334155", // Dark borders

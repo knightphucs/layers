@@ -1,6 +1,6 @@
 // ===========================================
 // LAYERS — Main Navigator
-// Tabs: Map | Inbox | Explore | Profile
+// Tabs: Map | Inbox | Explore | Ranks | Profile
 // ===========================================
 
 import React from "react";
@@ -14,6 +14,7 @@ import { Colors } from "../constants/colors";
 import MapScreen from "../screens/main/MapScreen";
 import InboxScreen from "../screens/main/InboxScreen";
 import ExploreScreen from "../screens/main/ExploreScreen";
+import LeaderboardScreen from "../screens/main/LeaderboardScreen";
 import ProfileScreen from "../screens/main/ProfileScreen";
 
 // ============================================================
@@ -34,6 +35,7 @@ const TabIcon = ({ name, focused, layer, badge }: TabIconProps) => {
     Map: "🗺️",
     Inbox: "💌",
     Explore: "🔍",
+    Ranks: "🏆",
     Profile: "👤",
   };
 
@@ -99,6 +101,7 @@ export default function MainNavigator() {
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Inbox" component={InboxScreen} />
       <Tab.Screen name="Explore" component={ExploreScreen} />
+      <Tab.Screen name="Ranks" component={LeaderboardScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

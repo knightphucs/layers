@@ -266,6 +266,8 @@ class QuestService:
 
         if completed:
             await db.flush()
+            from app.services.badge_service import BadgeService
+            await BadgeService.evaluate(db, user_id)
         return completed
 
     # ========================================================

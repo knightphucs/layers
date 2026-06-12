@@ -86,4 +86,7 @@ __all__ = [
     
     # Quest Completions
     "QuestCompletion",
+    
+    # User Badges
+    "UserBadge",
 ]

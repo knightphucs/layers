@@ -101,7 +101,7 @@ class FakeSession:
 
 @pytest.fixture
 def patch_quests_and_xp(monkeypatch):
-    """Pin today's quests to a controlled set and stub XPService.award."""
+    """Pin today's quests and stub XP/badge side effects."""
     fixed = [
         {"id": "q_one", "title": "One Unlock", "icon": "🔓", "layer": "BOTH",
          "description": "x", "trigger": QuestTrigger.ARTIFACT_UNLOCK, "target": 1, "xp": 40},
@@ -114,6 +114,13 @@ def patch_quests_and_xp(monkeypatch):
     async def fake_award(db, user_id, event_type, **kwargs):
         awards.append({"user_id": user_id, "event_type": event_type, **kwargs})
     monkeypatch.setattr(qmod.XPService, "award", staticmethod(fake_award))
+
+    async def fake_evaluate(db, user_id):
+        return []
+    monkeypatch.setattr(
+        "app.services.badge_service.BadgeService.evaluate",
+        staticmethod(fake_evaluate),
+    )
     return awards
 
 
@@ -148,6 +155,29 @@ class TestProgress:
         again = await QuestService.report_progress(db, user_id, QuestTrigger.ARTIFACT_UNLOCK)
         assert again == []                    # already done today
         assert len(awards) == 1               # still only one award
+
+    async def test_badges_evaluated_only_on_completion(
+        self, fake_redis, patch_quests_and_xp, monkeypatch
+    ):
+        evaluated = []
+
+        async def fake_evaluate(db, user_id):
+            evaluated.append(user_id)
+            return []
+
+        monkeypatch.setattr(
+            "app.services.badge_service.BadgeService.evaluate",
+            staticmethod(fake_evaluate),
+        )
+
+        user_id = uuid.uuid4()
+        db = FakeSession(FakeUser())
+        await QuestService.report_progress(db, user_id, QuestTrigger.REPLY_SENT)
+        await QuestService.report_progress(db, user_id, QuestTrigger.REPLY_SENT)
+        assert evaluated == []
+
+        await QuestService.report_progress(db, user_id, QuestTrigger.REPLY_SENT)
+        assert evaluated == [user_id]
 
     async def test_unrelated_trigger_no_progress(self, fake_redis, patch_quests_and_xp):
         user_id = uuid.uuid4()

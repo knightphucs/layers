@@ -23,6 +23,7 @@ import {
   ProfileHeader,
   StatsGrid,
 } from "../../components/profile";
+import { BadgeGrid } from "../../components/gamification/BadgeGrid";
 import NotificationPreferencesScreen from "./NotificationPreferencesScreen";
 import ConnectionsScreen from "./ConnectionsScreen";
 import PaperPlaneScreen from "./PaperPlaneScreen";
@@ -338,6 +339,8 @@ export default function ProfileScreen() {
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : null}
+
+        <BadgeGrid />
 
         <View style={styles.menuContainer}>
           {MENU_ITEMS.map((item) => (

@@ -7,6 +7,7 @@ export { default as ForgotPasswordScreen } from "./auth/ForgotPasswordScreen";
 export { default as MapScreen } from "./main/MapScreen";
 export { default as ExploreScreen } from "./main/ExploreScreen";
 export { default as ProfileScreen } from "./main/ProfileScreen";
+export { default as LeaderboardScreen } from "./main/LeaderboardScreen";
 
 // Chat Screens
 export { default as MessagesContainer } from "./main/MessagesContainer";
