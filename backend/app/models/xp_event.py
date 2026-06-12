@@ -49,7 +49,7 @@ class XPEvent(Base):
 
     # Idempotency: e.g. "reply_received:{reply_id}". Unique → safe retries.
     idempotency_key: Mapped[Optional[str]] = mapped_column(
-        String(120), nullable=True, unique=True, index=True
+        String(120), nullable=True, unique=True
     )
 
     # Snapshot before/after for the audit trail

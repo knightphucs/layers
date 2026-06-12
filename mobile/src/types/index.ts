@@ -172,8 +172,11 @@ export type MainTabParamList = {
   Map: undefined;
   Inbox: undefined;
   Explore: undefined;
+  Ranks: undefined;
   Profile: undefined;
 };
+
+export * from "./gamification";
 
 export type RootStackParamList = {
   Auth: undefined;

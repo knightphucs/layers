@@ -4,3 +4,5 @@ export { default as Card } from "./Card";
 export { default as Loading, LoadingInline } from "./Loading";
 export { default as Divider } from "./Divider";
 export { default as LocationStatus } from "./LocationStatus";
+export { BadgeGrid } from "./gamification/BadgeGrid";
+export { LeaderboardRow } from "./gamification/LeaderboardRow";

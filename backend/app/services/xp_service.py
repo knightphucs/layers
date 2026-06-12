@@ -227,9 +227,25 @@ class XPService:
             level_before=level_before,
             level_after=new_level,
         )
+        
+        if amount:
+            try:
+                from app.services.leaderboard_service import LeaderboardService
+                await LeaderboardService.record(user_id, total_xp=xp_after, delta=amount)
+            except Exception as e:  # noqa: BLE001
+                logger.debug("leaderboard update skipped: %s", e)
 
         if leveled_up and notify:
             await XPService._notify_level_up(user_id, result)
+            
+        # Level-ups can unlock level/streak/count badges — re-evaluate (cheap,
+        # infrequent). Idempotent, so nothing is double-awarded.
+        if leveled_up:
+            try:
+                from app.services.badge_service import BadgeService
+                await BadgeService.evaluate(db, user_id)
+            except Exception as e:  # noqa: BLE001
+                logger.debug("badge evaluation skipped: %s", e)
 
         return result
 

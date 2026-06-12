@@ -4,11 +4,11 @@ User accounts and profiles
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, Text, Enum as SQLEnum
+from sqlalchemy import Column, String, Integer, DateTime, Boolean, Text, Date, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -78,7 +78,10 @@ class User(Base):
         Integer,
         default=1
     )
-    
+    current_streak: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    longest_streak: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_quest_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
     # Status
     role: Mapped[UserRole] = mapped_column(
         SQLEnum(UserRole),

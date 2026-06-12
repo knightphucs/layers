@@ -35,6 +35,7 @@ from app.schemas.game import (
     WSGameEvent,
 )
 from app.services.game_service import GameService
+from app.services.badge_service import BadgeService
 from app.services.xp_service import XPService, XPEventType
 from app.services.quest_service import QuestService, QuestTrigger
 
@@ -222,6 +223,7 @@ async def reveal_round(
     if rnd.winner_user_id:
         await XPService.award(db, rnd.winner_user_id, XPEventType.CAMPFIRE_GAME_WIN)
         await QuestService.report_progress(db, rnd.winner_user_id, QuestTrigger.GAME_WIN)
+        await BadgeService.award_badge(db, rnd.winner_user_id, "campfire_star")
     state = await _get_state_or_404(db, room_id, current_user.id)
     await _broadcast_event(
         room_id, "round_revealed",

@@ -222,4 +222,11 @@ __all__ = [
     "QuestStreak",
     "QuestTodayResponse",
     "QuestCompletedItem",
+    
+    # Gamification - Badges & Leaderboards
+    "BadgeItem",
+    "BadgesResponse",
+    "BadgeUnlockedItem",
+    "LeaderboardEntry",
+    "LeaderboardResponse",
 ]

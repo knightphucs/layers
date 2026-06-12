@@ -88,6 +88,8 @@ class AuthService:
             experience_points=user.experience_points,
             level=user.level,
             reputation_score=user.reputation_score,
+            current_streak=user.current_streak or 0,
+            longest_streak=user.longest_streak or 0,
             is_verified=user.is_verified,
             created_at=user.created_at,
         )
