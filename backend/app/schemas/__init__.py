@@ -229,4 +229,10 @@ __all__ = [
     "BadgeUnlockedItem",
     "LeaderboardEntry",
     "LeaderboardResponse",
+
+    # Moderation
+    "ModerationLogOut",
+    "QueueItemOut",
+    "QueueResponse",
+    "LogsResponse",
 ]

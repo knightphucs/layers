@@ -89,4 +89,7 @@ __all__ = [
     
     # User Badges
     "UserBadge",
+    
+    # Moderation Logs
+    "ModerationLog",
 ]

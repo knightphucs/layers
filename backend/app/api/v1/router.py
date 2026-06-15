@@ -20,6 +20,7 @@ from app.api.v1.game import router as game_router
 from app.api.v1.xp import router as xp_router
 from app.api.v1.quests import router as quests_router
 from app.api.v1.gamification import router as gamification_router
+from app.api.v1.moderation import router as moderation_router
 
 api_router = APIRouter()
 
@@ -39,6 +40,7 @@ api_router.include_router(game_router)
 api_router.include_router(xp_router)
 api_router.include_router(quests_router)
 api_router.include_router(gamification_router)
+api_router.include_router(moderation_router)
 
 @api_router.get("/", tags=["API Info"])
 async def api_info():
@@ -48,8 +50,8 @@ async def api_info():
     return {
         "api_version": "v1",
         "status": "active",
-        "week": 7,
-        "day": 5,
+        "week": 8,
+        "day": 1,
         "modules": {
             "auth": "✅ Active (Week 1)",
             "map": "✅ Active (Day 1 — PostGIS geo-queries)",
@@ -65,11 +67,11 @@ async def api_info():
             "xp": "✅ Active (Week 7 Day 3 — XP system)",
             "quests": "✅ Active (Week 7 Day 4 — Quest system)",
             "gamification": "✅ Active (Week 7 Day 5 — Badges & Leaderboard)",
-            "commerce": "🚧 Coming Week 7",
+            "moderation": "✅ Active (Week 8 Day 1 — Auto-moderation and admin review)",
         },
         "websocket_endpoints": [
             "WS /api/v1/chat/ws/{room_id}?token={jwt}",
         ],
-        "endpoints_total": 76,
-        "test_files": 20,
+        "endpoints_total": 81,
+        "test_files": 21,
     }
