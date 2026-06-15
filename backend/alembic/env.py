@@ -38,6 +38,7 @@ from app.models.xp_event import XPEvent
 from app.models.quest_completion import QuestCompletion
 from app.models.notification import DeviceToken, NotificationPreference, NotificationHistory
 from app.models.user_badge import UserBadge
+from app.models.moderation_log import ModerationLog
 
 # Alembic Config object
 config = context.config
