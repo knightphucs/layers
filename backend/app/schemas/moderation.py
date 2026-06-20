@@ -32,6 +32,7 @@ class QueueItemOut(BaseModel):
     text_preview: Optional[str]
     media_url: Optional[str]
     flag_reasons: Optional[Dict[str, Any]]
+    report_reasons: Optional[Dict[str, int]]
     created_at: datetime
 
 

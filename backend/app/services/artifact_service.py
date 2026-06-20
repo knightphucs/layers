@@ -31,6 +31,8 @@ from app.schemas.artifact import (
     TimeCapsuleCreate,
     ArtifactReplyCreate, ArtifactReplyResponse,
 )
+from app.services.moderation_service import ModerationService, ModerationContext
+from app.services.reputation_service import ReputationService
 from app.utils.geo import random_point_in_ring, haversine_distance
 
 # ============================================================
@@ -42,7 +44,6 @@ SLOW_MAIL_MAX_DELAY_HOURS = 12      # maximum reply delay
 PAPER_PLANE_MIN_DISTANCE = 200      # meters
 PAPER_PLANE_MAX_DISTANCE = 1000     # meters
 MAX_ARTIFACTS_PER_DAY = 5           # rate limit
-AUTO_HIDE_REPORT_THRESHOLD = 5      # 5 reports = auto-hide
 
 
 def _hash_passcode(code: str) -> str:
@@ -179,18 +180,21 @@ class ArtifactService:
     async def create_artifact(
         db: AsyncSession,
         data: ArtifactCreate,
-        user_id: uuid.UUID,
+        user: User,
     ) -> Artifact:
         """
         Create a new artifact at a location.
 
         Steps:
         1. Rate limit check (max 5/day)
-        2. Find or create Location from lat/lng
-        3. Handle privacy (hash passcode, resolve target user)
-        4. Create artifact with JSONB payload
-        5. Update location artifact_count
+        2. Reputation gate: RESTRICTED users can't post VOUCHER
+        3. Find or create Location from lat/lng
+        4. Handle privacy (hash passcode, resolve target user)
+        5. Moderation filter + reputation-gated publishing → initial status
+        6. Create artifact with JSONB payload
+        7. Update location artifact_count
         """
+        user_id = user.id
 
         # --- Rate limit ---
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -202,6 +206,12 @@ class ArtifactService:
 
         if daily_count >= MAX_ARTIFACTS_PER_DAY:
             raise ValueError(f"Max {MAX_ARTIFACTS_PER_DAY} artifacts per day. Come back tomorrow!")
+
+        # --- Reputation gate: VOUCHER is a scam vector for low-trust users ---
+        if data.content_type == ContentType.VOUCHER and not ReputationService.can_post_voucher(
+            user.reputation_score
+        ):
+            raise ValueError("Your reputation is too low to create vouchers right now")
 
         # --- Find nearby Location or create new one ---
         user_point = ST_SetSRID(ST_MakePoint(data.longitude, data.latitude), 4326)
@@ -263,6 +273,17 @@ class ArtifactService:
         # --- Validate payload per content_type ---
         ArtifactService._validate_payload(data.content_type, data.payload)
 
+        # --- Moderation filter (raises ModerationRejected on severe content) ---
+        initial_status = await ModerationService.enforce(
+            db, user=user, context=ModerationContext.ARTIFACT_CREATE,
+            content_type=data.content_type, payload=data.payload,
+        )
+        # --- Reputation-gated publishing: low-trust users get quarantined
+        # even if the text filter found nothing wrong ---
+        initial_status = ReputationService.gate_initial_status(
+            user.reputation_score, initial_status
+        )
+
         # --- Create artifact ---
         artifact = Artifact(
             location_id=location.id,
@@ -276,6 +297,7 @@ class ArtifactService:
             layer=data.layer,
             unlock_at=unlock_at,
             expires_at=expires_at,
+            status=ArtifactStatus(initial_status),
         )
         db.add(artifact)
 
@@ -491,12 +513,14 @@ class ArtifactService:
     async def create_paper_plane(
         db: AsyncSession,
         data: PaperPlaneCreate,
-        user_id: uuid.UUID,
+        user: User,
     ) -> dict:
         """
         Paper Planes: Write a note, throw it, it lands at a random spot.
         From Masterplan Section 5B: Random Drop Algorithm.
         """
+        user_id = user.id
+
         # Calculate random landing spot
         land_lat, land_lng = random_point_in_ring(
             data.latitude, data.longitude,
@@ -520,18 +544,30 @@ class ArtifactService:
         db.add(location)
         await db.flush()
 
+        payload = {
+            "text": data.text,
+            "flight_distance": round(flight_distance, 1),
+            "origin": {"latitude": data.latitude, "longitude": data.longitude},
+        }
+
+        # Moderation filter (raises ModerationRejected on severe content)
+        initial_status = await ModerationService.enforce(
+            db, user=user, context=ModerationContext.ARTIFACT_CREATE,
+            content_type=ContentType.PAPER_PLANE, payload=payload,
+        )
+        initial_status = ReputationService.gate_initial_status(
+            user.reputation_score, initial_status
+        )
+
         # Create artifact
         artifact = Artifact(
             location_id=location.id,
             user_id=user_id,
             content_type=ContentType.PAPER_PLANE,
-            payload={
-                "text": data.text,
-                "flight_distance": round(flight_distance, 1),
-                "origin": {"latitude": data.latitude, "longitude": data.longitude},
-            },
+            payload=payload,
             visibility=Visibility.PUBLIC,
             layer="LIGHT",
+            status=ArtifactStatus(initial_status),
         )
         db.add(artifact)
         location.artifact_count = 1
@@ -555,7 +591,7 @@ class ArtifactService:
         db: AsyncSession,
         artifact_id: uuid.UUID,
         data: ArtifactReplyCreate,
-        user_id: uuid.UUID,
+        user: User,
         user_lat: float,
         user_lng: float,
     ) -> dict:
@@ -563,6 +599,7 @@ class ArtifactService:
         Reply to an artifact using Slow Mail Protocol.
         From Masterplan: Reply delayed 6-12 hours randomly.
         """
+        user_id = user.id
         # Find artifact + location
         result = await db.execute(
             select(Artifact, Location)
@@ -588,6 +625,14 @@ class ArtifactService:
         # Can't reply to own artifact
         if str(artifact.user_id) == str(user_id):
             raise ValueError("You can't reply to your own artifact!")
+
+        # Moderation filter (raises ModerationRejected on severe content).
+        # ArtifactReply has no PENDING state, so ALLOW/FLAG are both let
+        # through — FLAG is still logged for admin visibility.
+        await ModerationService.enforce(
+            db, user=user, context=ModerationContext.REPLY,
+            text=data.content, artifact_id=artifact_id,
+        )
 
         # Calculate random delivery time (Slow Mail: 6-12 hours)
         delay_hours = random.uniform(SLOW_MAIL_MIN_DELAY_HOURS, SLOW_MAIL_MAX_DELAY_HOURS)
@@ -627,40 +672,6 @@ class ArtifactService:
             "deliver_at": deliver_at,
             "created_at": reply.created_at,
             "message": f"Reply will be delivered in ~{int(delay_hours)} hours ✉️",
-        }
-
-    # ========================================================
-    # REPORT ARTIFACT
-    # ========================================================
-
-    @staticmethod
-    async def report_artifact(
-        db: AsyncSession,
-        artifact_id: uuid.UUID,
-        user_id: uuid.UUID,
-        reason: str,
-    ) -> dict:
-        """
-        Report an artifact. From Masterplan: 5 reports = auto-hide.
-        """
-        result = await db.execute(
-            select(Artifact).where(Artifact.id == artifact_id)
-        )
-        artifact = result.scalar_one_or_none()
-        if not artifact:
-            raise ValueError("Artifact not found")
-
-        artifact.report_count += 1
-
-        # Auto-hide at threshold
-        if artifact.report_count >= AUTO_HIDE_REPORT_THRESHOLD:
-            artifact.status = ArtifactStatus.HIDDEN
-
-        await db.commit()
-
-        return {
-            "message": "Report submitted. Thank you for keeping LAYERS safe!",
-            "artifact_hidden": artifact.status == ArtifactStatus.HIDDEN,
         }
 
     # ========================================================

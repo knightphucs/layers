@@ -25,6 +25,7 @@ from app.core.database import get_db
 from app.api.v1.auth import get_current_user  # ← Lives in auth.py!
 from app.models.user import User
 from app.services.artifact_service import ArtifactService
+from app.services.report_service import ReportService
 from app.services.xp_service import XPService, XPEventType
 from app.services.quest_service import QuestService, QuestTrigger
 from app.utils.anti_cheat import validate_location, validate_location_update
@@ -67,7 +68,7 @@ async def create_artifact(
 ):
     try:
         artifact = await ArtifactService.create_artifact(
-            db=db, data=data, user_id=current_user.id,
+            db=db, data=data, user=current_user,
         )
         xp = await XPService.award(db, current_user.id, XPEventType.ARTIFACT_CREATE, ref_id=artifact.id)
         quests_completed = await QuestService.report_progress(
@@ -241,7 +242,7 @@ async def reply_to_artifact(
             db=db,
             artifact_id=artifact_id,
             data=data,
-            user_id=current_user.id,
+            user=current_user,
             user_lat=lat,
             user_lng=lng,
         )
@@ -261,20 +262,26 @@ async def reply_to_artifact(
 @router.post(
     "/{artifact_id}/report",
     summary="Report inappropriate content",
-    description="5 reports = auto-hide. Keeps LAYERS safe.",
+    description="One report per user per artifact. Trust-weighted auto-hide.",
 )
 async def report_artifact(
     artifact_id: UUID,
-    reason: str = Query(..., min_length=5, max_length=500, description="Why are you reporting?"),
+    reason: str = Query(
+        ...,
+        pattern="^(SPAM|HARASSMENT|SEXUAL_CONTENT|VIOLENCE|HATE_SPEECH|MISINFORMATION|PERSONAL_INFO|OTHER)$",
+        description="Report category",
+    ),
+    detail: Optional[str] = Query(None, max_length=500, description="Optional details"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await ArtifactService.report_artifact(
+        return await ReportService.submit_report(
             db=db,
             artifact_id=artifact_id,
-            user_id=current_user.id,
+            reporter_id=current_user.id,
             reason=reason,
+            detail=detail,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -322,7 +329,7 @@ async def create_paper_plane(
 ):
     try:
         result = await ArtifactService.create_paper_plane(
-            db=db, data=data, user_id=current_user.id,
+            db=db, data=data, user=current_user,
         )
         result["xp"] = await XPService.award(db, current_user.id, XPEventType.ARTIFACT_CREATE)
         result["quests_completed"] = await QuestService.report_progress(
@@ -362,7 +369,7 @@ async def create_time_capsule(
             unlock_conditions={"unlock_date": data.unlock_date.isoformat()},
         )
         artifact = await ArtifactService.create_artifact(
-            db=db, data=artifact_data, user_id=current_user.id,
+            db=db, data=artifact_data, user=current_user,
         )
         return {
             "id": str(artifact.id),
