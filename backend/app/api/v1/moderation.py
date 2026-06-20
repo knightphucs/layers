@@ -22,6 +22,8 @@ from app.models.user import User
 from app.models.artifact import Artifact, ArtifactStatus
 from app.models.moderation_log import ModerationLog
 from app.services.moderation_service import ModerationService, PENALTY_ADMIN_REMOVE
+from app.services.report_service import ReportService
+from app.workers.image_scan_worker import run_scan_batch
 from app.schemas.moderation import ModerationLogOut, QueueItemOut, QueueResponse, LogsResponse
 
 router = APIRouter(prefix="/moderation", tags=["Moderation"])
@@ -56,6 +58,7 @@ async def review_queue(
 
     # Pull the FLAG log for each artifact so the admin sees WHY it was held
     reasons_by_artifact = {}
+    report_reasons_by_artifact = {}
     if artifacts:
         logs = (await db.execute(
             select(ModerationLog)
@@ -64,6 +67,12 @@ async def review_queue(
         )).scalars().all()
         for log in logs:
             reasons_by_artifact.setdefault(str(log.artifact_id), log.reasons)
+
+        # User-submitted report categories (separate from the auto-filter
+        # log above — HIDDEN-by-reports artifacts have no ModerationLog row)
+        report_reasons_by_artifact = await ReportService.reasons_breakdown_bulk(
+            db, [a.id for a in artifacts]
+        )
 
     items = []
     for a in artifacts:
@@ -84,6 +93,7 @@ async def review_queue(
             text_preview=(text_preview or "")[:200] or None,
             media_url=a.payload.get("url") if isinstance(a.payload, dict) else None,
             flag_reasons=reasons_by_artifact.get(str(a.id)),
+            report_reasons=report_reasons_by_artifact.get(str(a.id)),
             created_at=a.created_at,
         ))
 
@@ -107,6 +117,7 @@ async def approve_artifact(
     await ModerationService.log_admin_action(
         db, admin.id, artifact_id, "ADMIN_APPROVE"
     )
+    await ReportService.resolve_for_artifact(db, artifact_id, removed=False)
     await db.commit()
     return {"message": "Artifact approved and published", "artifact_id": str(artifact_id)}
 
@@ -130,6 +141,7 @@ async def remove_artifact(
     await ModerationService.log_admin_action(
         db, admin.id, artifact_id, "ADMIN_REMOVE", note=reason
     )
+    await ReportService.resolve_for_artifact(db, artifact_id, removed=True)
     await db.commit()
     return {
         "message": "Artifact removed; author penalized",
@@ -185,3 +197,9 @@ async def moderation_stats(
         "auto_hidden_by_reports": hidden,
         "total_rejections": rejects,
     }
+
+@router.post("/scan-photos", summary="[ADMIN] Trigger a scan of pending photos")
+async def scan_photos(limit: int = Query(20, ge=1, le=100),
+                      admin: User = Depends(require_admin),
+                      db: AsyncSession = Depends(get_db)):
+    return await run_scan_batch(db, limit)

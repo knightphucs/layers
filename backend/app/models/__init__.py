@@ -23,12 +23,13 @@ from app.models.social_spark import (
     SynchronicityEvent,
 )
 from app.models.game import (
-    CampfireGame, 
-    CampfireGameRound, 
+    CampfireGame,
+    CampfireGameRound,
     CampfireGameAnswer,
-    GameState, 
+    GameState,
     RoundState
 )
+from app.models.report import Report
 
 __all__ = [
     # User
@@ -92,4 +93,7 @@ __all__ = [
     
     # Moderation Logs
     "ModerationLog",
+
+    # Reports
+    "Report",
 ]

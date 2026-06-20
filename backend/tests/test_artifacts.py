@@ -190,8 +190,8 @@ class TestConstants:
         assert PAPER_PLANE_MAX_DISTANCE == 1000
 
     def test_auto_hide_threshold(self):
-        from app.services.artifact_service import AUTO_HIDE_REPORT_THRESHOLD
-        assert AUTO_HIDE_REPORT_THRESHOLD == 5
+        from app.services.report_service import AUTO_HIDE_WEIGHT_THRESHOLD
+        assert AUTO_HIDE_WEIGHT_THRESHOLD == 5.0
 
 
 class TestPaperPlaneAlgorithm:
