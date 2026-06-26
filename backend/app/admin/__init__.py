@@ -1,0 +1,1 @@
+from app.admin.setup import setup_admin # noqa: F401

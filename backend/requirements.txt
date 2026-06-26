@@ -52,7 +52,9 @@ httpx==0.26.0                     # Async HTTP client for testing
 aiosqlite==0.19.0                 # SQLite async for fast tests
 
 # ============ Admin Panel ============
-sqladmin==0.16.0
+sqladmin>=0.16,<0.21
+aiosqlite==0.19.0                 # SQLite async for admin panel (for simplicity)
+itsdangerous==2.1.2               # Required by starlette SessionMiddleware (sqladmin AdminAuth)
 
 # ============ Utilities ============
 geopy==2.4.1                      # Geo calculations

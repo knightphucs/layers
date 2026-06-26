@@ -111,6 +111,10 @@ app.add_middleware(
 # Rate limiting (Redis-backed sliding window, in-memory fallback).
 app.add_middleware(RateLimitMiddleware)
 
+# Mount the admin panel at /admin
+from app.admin.setup import setup_admin
+setup_admin(app)
+
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
 
