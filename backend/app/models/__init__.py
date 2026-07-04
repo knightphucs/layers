@@ -29,7 +29,12 @@ from app.models.game import (
     GameState,
     RoundState
 )
+from app.models.xp_event import XPEvent
+from app.models.quest_completion import QuestCompletion
+from app.models.user_badge import UserBadge
+from app.models.moderation_log import ModerationLog
 from app.models.report import Report
+from app.models.glitch_zone import GlitchZone
 
 __all__ = [
     # User
@@ -96,4 +101,7 @@ __all__ = [
 
     # Reports
     "Report",
+    
+    # Glitch Zones
+    "GlitchZone",
 ]

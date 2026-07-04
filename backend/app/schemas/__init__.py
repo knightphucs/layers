@@ -116,6 +116,31 @@ from app.schemas.quest import (
     QuestCompletedItem,
 )
 
+from app.schemas.gamification import (
+    BadgeItem,
+    BadgesResponse,
+    BadgeUnlockedItem,
+    LeaderboardEntry,
+    LeaderboardResponse,
+)
+
+from app.schemas.moderation import (
+    ModerationLogOut,
+    QueueItemOut,
+    QueueResponse,
+    LogsResponse,
+)
+
+from app.schemas.report import (
+    ReportIn,
+    ReportOut,
+)
+
+from app.schemas.shadow import (
+    GlitchZoneCreate,
+    GlitchZoneResponse,
+)
+
 __all__ = [
     # Auth
     "UserRegister",
@@ -235,4 +260,12 @@ __all__ = [
     "QueueItemOut",
     "QueueResponse",
     "LogsResponse",
+
+    # Reports
+    "ReportIn",
+    "ReportOut",
+    
+    # Glitch Zones
+    "GlitchZoneCreate",
+    "GlitchZoneResponse",
 ]
