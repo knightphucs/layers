@@ -39,6 +39,8 @@ from app.models.quest_completion import QuestCompletion
 from app.models.notification import DeviceToken, NotificationPreference, NotificationHistory
 from app.models.user_badge import UserBadge
 from app.models.moderation_log import ModerationLog
+from app.models.report import Report
+from app.models.glitch_zone import GlitchZone
 
 # Alembic Config object
 config = context.config

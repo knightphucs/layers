@@ -34,6 +34,7 @@ from app.schemas.artifact import (
 from app.services.moderation_service import ModerationService, ModerationContext
 from app.services.reputation_service import ReputationService
 from app.utils.geo import random_point_in_ring, haversine_distance
+from app.utils.shadow_time import check_time_lock_tz_aware, midnight_unlock_conditions
 
 # ============================================================
 # CONSTANTS (From Masterplan)
@@ -52,40 +53,9 @@ def _hash_passcode(code: str) -> str:
 
 
 def _check_time_lock(unlock_conditions: Optional[dict]) -> tuple[bool, Optional[str]]:
-    """
-    Check if artifact is time-locked.
-    Returns (is_locked, lock_reason)
-    """
-    if not unlock_conditions:
-        return False, None
-
-    now = datetime.now(timezone.utc)
-
-    # Time window lock (Shadow Layer: 23:00-03:00)
-    if "time_start" in unlock_conditions and "time_end" in unlock_conditions:
-        start_hour = int(unlock_conditions["time_start"].split(":")[0])
-        end_hour = int(unlock_conditions["time_end"].split(":")[0])
-        current_hour = now.hour
-
-        # Handle overnight ranges (23:00-03:00)
-        if start_hour > end_hour:
-            in_window = current_hour >= start_hour or current_hour < end_hour
-        else:
-            in_window = start_hour <= current_hour < end_hour
-
-        if not in_window:
-            return True, f"Only available {unlock_conditions['time_start']}-{unlock_conditions['time_end']}"
-
-    # Future date lock (Time Capsule)
-    if "unlock_date" in unlock_conditions:
-        unlock_date = datetime.fromisoformat(unlock_conditions["unlock_date"])
-        if unlock_date.tzinfo is None:
-            unlock_date = unlock_date.replace(tzinfo=timezone.utc)
-        if now < unlock_date:
-            days_left = (unlock_date - now).days
-            return True, f"Opens in {days_left} days"
-
-    return False, None
+    """Timezone-aware (HCMC UTC+7) night-window + Time Capsule lock.
+    Delegates to app.utils.shadow_time — single source of truth."""
+    return check_time_lock_tz_aware(unlock_conditions)
 
 
 def _build_artifact_response(
@@ -261,6 +231,12 @@ class ArtifactService:
         # --- Handle unlock conditions ---
         unlock_at = None
         expires_at = None
+        unlock_conditions = data.unlock_conditions
+
+        # SHADOW artifacts default to the Midnight Lock window unless the
+        # creator set their own unlock_conditions (e.g. a Time Capsule date).
+        if data.layer == "SHADOW" and not unlock_conditions:
+            unlock_conditions = midnight_unlock_conditions()
 
         if data.content_type == ContentType.TIME_CAPSULE:
             if data.unlock_conditions and "unlock_date" in data.unlock_conditions:
@@ -293,7 +269,7 @@ class ArtifactService:
             visibility=data.visibility,
             target_user_id=target_user_id,
             secret_code_hash=secret_code_hash,
-            unlock_conditions=data.unlock_conditions,
+            unlock_conditions=unlock_conditions,
             layer=data.layer,
             unlock_at=unlock_at,
             expires_at=expires_at,
@@ -755,6 +731,40 @@ class ArtifactService:
         artifact.status = ArtifactStatus.DELETED
         await db.commit()
         return True
+
+    # ========================================================
+    # UPDATE UNLOCK CONDITIONS
+    # ========================================================
+
+    @staticmethod
+    async def update_unlock_conditions(
+        db: AsyncSession,
+        artifact_id: uuid.UUID,
+        user_id: uuid.UUID,
+        unlock_conditions: Optional[Dict[str, Any]],
+    ) -> Optional[Artifact]:
+        """Owner-only edit of an artifact's unlock_conditions (e.g. loosen/
+        tighten the Midnight Lock window, or clear it entirely with None)."""
+        result = await db.execute(
+            select(Artifact).where(and_(
+                Artifact.id == artifact_id,
+                Artifact.user_id == user_id,
+                Artifact.status != ArtifactStatus.DELETED,
+            ))
+        )
+        artifact = result.scalar_one_or_none()
+        if not artifact:
+            return None
+
+        artifact.unlock_conditions = unlock_conditions
+        if unlock_conditions and "unlock_date" in unlock_conditions:
+            artifact.unlock_at = datetime.fromisoformat(unlock_conditions["unlock_date"])
+        else:
+            artifact.unlock_at = None
+
+        await db.commit()
+        await db.refresh(artifact)
+        return artifact
 
     # ========================================================
     # PAYLOAD VALIDATION

@@ -12,6 +12,7 @@ Endpoints:
   POST   /api/v1/artifacts/{id}/reply        — Reply via Slow Mail
   POST   /api/v1/artifacts/{id}/report       — Report artifact
   DELETE /api/v1/artifacts/{id}              — Soft delete (owner only)
+  PATCH  /api/v1/artifacts/{id}/unlock-conditions — Edit lock window (owner only)
   POST   /api/v1/artifacts/paper-plane       — Throw a paper plane
   POST   /api/v1/artifacts/time-capsule      — Create time capsule
 """
@@ -37,6 +38,7 @@ from app.schemas.artifact import (
     PaperPlaneResponse,
     TimeCapsuleCreate,
     ArtifactReplyCreate,
+    UnlockConditionsUpdate,
     ContentType,
     Visibility,
 )
@@ -306,6 +308,33 @@ async def delete_artifact(
     )
     if not deleted:
         raise HTTPException(status_code=404, detail="Artifact not found or no permission")
+
+
+# ============================================================
+# PATCH /artifacts/{id}/unlock-conditions — Edit your lock window
+# ============================================================
+
+@router.patch(
+    "/{artifact_id}/unlock-conditions",
+    summary="Edit your artifact's unlock conditions",
+    description="""
+    Owner-only. Loosen/tighten a SHADOW artifact's Midnight Lock window,
+    or pass `unlock_conditions: null` to remove the time lock entirely.
+    """,
+)
+async def update_unlock_conditions(
+    artifact_id: UUID,
+    data: UnlockConditionsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    artifact = await ArtifactService.update_unlock_conditions(
+        db=db, artifact_id=artifact_id, user_id=current_user.id,
+        unlock_conditions=data.unlock_conditions,
+    )
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found or no permission")
+    return {"id": str(artifact.id), "unlock_conditions": artifact.unlock_conditions}
 
 
 # ============================================================

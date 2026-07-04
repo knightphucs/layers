@@ -116,6 +116,12 @@ class ArtifactDetail(ArtifactResponse):
     is_for_me: bool = False
 
 
+class UnlockConditionsUpdate(BaseModel):
+    """Owner-only edit of an artifact's unlock_conditions.
+    Pass null/omit to clear the lock entirely."""
+    unlock_conditions: Optional[Dict[str, Any]] = None
+
+
 class ArtifactPreview(BaseModel):
     """Minimal artifact preview for map markers"""
     id: str
