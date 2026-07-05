@@ -4,6 +4,20 @@
 
 ---
 
+## ✅ Week 8 Day 5: Production Hardening
+
+- [x] Strict CORS for production domains only (`CORS_ORIGINS` env, `*` auto-stripped when `DEBUG=False`)
+- [x] Rate limit login (5/min), registration (3/hour), password reset (3/hour)
+- [x] Security headers (nosniff, X-Frame-Options, HSTS) via `SecurityHeadersMiddleware`
+- [x] Content Moderation (Week 8 Day 1–2): rule-based profanity filter + report/reputation system
+- [x] Set `DEBUG=False` refuses insecure boot (`validate_production_secrets` raises on startup)
+- [ ] HTTPS (cấu hình ở tầng deploy/reverse proxy — Week 10)
+- [ ] Token blacklist in Redis (nice-to-have, có thể để post-launch)
+
+See `backend/app/core/security_hardening.py` and `backend/app/core/endpoint_rate_limit.py`.
+
+---
+
 ## ✅ Authentication Security
 
 ### Password Handling
@@ -45,7 +59,7 @@
 
 - [x] CORS configured for allowed origins
 - [x] Content-Type validation
-- [ ] **TODO (Production):** Strict CORS for production domains only
+- [x] Strict CORS for production domains only (`get_cors_origins`, `CORS_ORIGINS` env)
 
 ---
 
@@ -71,17 +85,17 @@
 
 ### Rate Limiting
 
-- [ ] **TODO:** Implement rate limiting (use slowapi or Redis)
-- [ ] **TODO:** Rate limit login attempts (5/min)
-- [ ] **TODO:** Rate limit registration (3/hour)
-- [ ] **TODO:** Rate limit password reset (3/hour)
+- [x] Global rate limiting (Redis sliding-window, in-memory fallback) — `app/core/rate_limit.py`
+- [x] Rate limit login attempts (5/min) — `app/core/endpoint_rate_limit.py`
+- [x] Rate limit registration (3/hour)
+- [x] Rate limit password reset (3/hour)
 
 ### Error Handling
 
 - [x] Generic error messages (no stack traces in production)
 - [x] Email enumeration prevention (password reset)
 - [x] Consistent error response format
-- [ ] **TODO (Production):** Set DEBUG=False
+- [x] Set DEBUG=False refuses insecure boot (`validate_production_secrets` raises in `lifespan()`)
 
 ---
 
@@ -101,10 +115,10 @@
 
 ### Moderation
 
-- [x] Design: Report system (5 reports = auto-hide)
-- [x] Design: Reputation score system
-- [ ] **TODO (Week 8):** AI content scanning
-- [ ] **TODO (Week 8):** Profanity filter
+- [x] Report system (5 reports = auto-hide)
+- [x] Reputation score system
+- [x] Profanity filter (rule-based VN + EN, leetspeak/diacritic evasion handling) — `app/services/moderation_service.py`
+- [ ] **TODO (Week 8+):** Real AI image scanning (NudeNet/Rekognition) — currently a stub that holds PHOTO artifacts as PENDING for human review
 
 ### File Uploads
 
@@ -143,34 +157,23 @@
 
 ---
 
-## 📊 Security Headers (Add to Production)
+## 📊 Security Headers (Implemented — Week 8 Day 5)
 
-```python
-# Add these headers in production
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+Wired in `app/main.py` via `setup_security(app, settings)`, defined in
+`app/core/security_hardening.py`:
 
-# Force HTTPS
-app.add_middleware(HTTPSRedirectMiddleware)
+- `SecurityHeadersMiddleware` — nosniff, X-Frame-Options, Referrer-Policy,
+  Permissions-Policy, and HSTS (HSTS only sent when `debug=False`)
+- `TrustedHostMiddleware` — enabled only in production, hosts from `ALLOWED_HOSTS`
+- `HTTPSRedirectMiddleware` — opt-in via `FORCE_HTTPS=True` (enable behind a TLS-terminating reverse proxy)
 
-# Trusted hosts
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["layers.app", "*.layers.app"]
-)
+To configure for a real deploy, set in `.env`:
+
 ```
-
-Add security headers middleware:
-
-```python
-@app.middleware("http")
-async def add_security_headers(request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000"
-    return response
+CORS_ORIGINS=https://layers.app,https://www.layers.app
+ALLOWED_HOSTS=layers.app,api.layers.app
+FORCE_HTTPS=True
+DEBUG=False
 ```
 
 ---
@@ -183,9 +186,12 @@ async def add_security_headers(request, call_next):
 | JWT Auth           | ✅ Secure    | Proper expiry, signed tokens |
 | Input Validation   | ✅ Secure    | Pydantic validation          |
 | SQL Injection      | ✅ Protected | SQLAlchemy ORM               |
-| Rate Limiting      | ⚠️ TODO      | Add before launch            |
-| HTTPS              | ⚠️ TODO      | Configure in production      |
-| Content Moderation | ⚠️ TODO      | Week 8                       |
+| Rate Limiting      | ✅ Secure    | Global + per-endpoint (login/register/reset) |
+| CORS / Headers     | ✅ Secure    | Settings-driven, `*` stripped in prod, HSTS/nosniff/X-Frame-Options |
+| Boot-time secrets  | ✅ Secure    | Refuses to start in prod with default secrets |
+| HTTPS              | ⚠️ TODO      | Configure at reverse-proxy/deploy layer (Week 10) |
+| Content Moderation | ⚠️ Partial   | Report + reputation + rule-based profanity filter done; real AI image scan still a stub |
+| Token Blacklist    | ⚠️ TODO      | Nice-to-have, post-launch    |
 
 ---
 

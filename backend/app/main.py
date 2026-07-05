@@ -14,6 +14,9 @@ from app.api.v1.router import api_router
 from app.core.rate_limit import RateLimitMiddleware
 from app.core.redis_client import close_redis, init_redis, is_redis_available
 from app.core.ws_manager import manager
+from app.core.security_hardening import (
+    setup_security, get_cors_origins, validate_production_secrets,
+)
 
 
 # Configure logging
@@ -33,7 +36,17 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Starting LAYERS API...")
     logger.info(f"📍 Debug mode: {settings.debug}")
-    
+
+    problems = validate_production_secrets(settings)
+    if problems:
+        for p in problems:
+            logger.error("🔒 SECURITY: %s", p)
+        if not settings.debug:
+            raise RuntimeError(
+                "Refusing to start in production with insecure config: "
+                + "; ".join(problems)
+            )
+
     # Initialize database (create tables if not exist)
     try:
         await init_db()
@@ -93,16 +106,13 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,  # ReDoc
 )
 
-# CORS configuration
+# Security headers + trusted hosts (must be added before CORS)
+setup_security(app, settings)
+
+# CORS — settings-driven; "*" tự động bị loại ở production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",       # React dev
-        "http://localhost:19006",      # Expo web
-        "http://localhost:8081",       # Expo
-        "exp://localhost:8081",        # Expo Go
-        "*",  # Allow all for development (restrict in production!)
-    ],
+    allow_origins=get_cors_origins(settings),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
