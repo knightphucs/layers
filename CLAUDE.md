@@ -106,5 +106,5 @@ Key `.env` variables:
 
 - Backend uses full async - always use `async def` and `await` for database operations
 - All database sessions use `AsyncSessionLocal` context manager
-- Mobile app entry point is currently a blank template (Week 2 setup pending)
+- Mobile app has a full screen/component/store/navigation structure under `mobile/src/`; `mobile/App.tsx` is a real entry point (nav container, error boundary, offline/toast providers)
 - Docker services: `layers_postgres` (5432), `layers_redis` (6379), `layers_minio` (9000/9001)

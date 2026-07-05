@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     postgres_password: Optional[str] = None
     redis_password: Optional[str] = None
 
+    # Security
+    cors_origins: Optional[str] = None      # "https://layers.app,https://www.layers.app"
+    allowed_hosts: Optional[str] = None     # "layers.app,api.layers.app"
+    force_https: bool = False               # Force HTTPS in production (behind a reverse proxy TLS termination)
+
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parent.parent.parent / ".env",
         env_file_encoding="utf-8",

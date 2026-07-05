@@ -29,6 +29,7 @@ from app.schemas.auth import (
 from app.services.auth_service import AuthService
 from app.core.storage import upload_avatar, ALLOWED_IMAGE_TYPES
 from app.core.config import settings
+from app.core.endpoint_rate_limit import rate_limit
 
 
 logger = logging.getLogger(__name__)
@@ -113,7 +114,12 @@ async def get_current_user_optional(
 # Endpoints
 # =============================================================================
 
-@router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("register", 3, 3600))],
+)
 async def register(
     data: UserRegister,
     db: AsyncSession = Depends(get_db)
@@ -125,7 +131,11 @@ async def register(
     return await AuthService.register_user(db, data)
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post(
+    "/login",
+    response_model=AuthResponse,
+    dependencies=[Depends(rate_limit("login", 5, 60))],
+)
 async def login(
     data: UserLogin,
     db: AsyncSession = Depends(get_db)
@@ -150,7 +160,11 @@ async def refresh_token(
 # Password Reset
 # =============================================================================
 
-@router.post("/password-reset/request", response_model=MessageResponse)
+@router.post(
+    "/password-reset/request",
+    response_model=MessageResponse,
+    dependencies=[Depends(rate_limit("pwreset", 3, 3600))],
+)
 async def request_password_reset(
     data: PasswordResetRequest,
     db: AsyncSession = Depends(get_db)
