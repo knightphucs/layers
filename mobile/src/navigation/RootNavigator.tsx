@@ -1,28 +1,35 @@
 // ===========================================
 // LAYERS Root Navigator
-// Switches between Auth and Main based on auth state
+// Switches between Auth, Onboarding and Main based on auth state
+//   not authenticated            → AuthNavigator
+//   authenticated + no onboarding → OnboardingNavigator (once per device)
+//   authenticated + onboarded     → MainNavigator
 // ===========================================
 
 import React, { useEffect } from "react";
 import { ActivityIndicator, View, StyleSheet, Text } from "react-native";
 import { useAuthStore } from "../store/authStore";
+import { useOnboardingStore } from "../store/onboardingStore";
 import AuthNavigator from "./AuthNavigator";
 import MainNavigator from "./MainNavigator";
+import OnboardingNavigator from "./OnboardingNavigator";
 import { Colors } from "../constants/colors";
 import { useNotifications } from "../hooks/useNotifications";
 
 export default function RootNavigator() {
   const { isAuthenticated, isLoading, loadStoredAuth, layer } = useAuthStore();
+  const { isHydrated, hasCompletedOnboarding, hydrate } = useOnboardingStore();
   const { expoPushToken } = useNotifications();
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
 
   // Load stored auth on app start
   useEffect(() => {
     loadStoredAuth();
+    hydrate();
   }, []);
 
-  // Loading screen while checking auth
-  if (isLoading) {
+  // Loading screen while checking auth + hydrating onboarding flags
+  if (isLoading || !isHydrated) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <Text style={styles.loadingLogo}>🌆</Text>
@@ -41,7 +48,15 @@ export default function RootNavigator() {
     );
   }
 
-  return isAuthenticated ? <MainNavigator /> : <AuthNavigator />;
+  if (!isAuthenticated) {
+    return <AuthNavigator />;
+  }
+
+  if (!hasCompletedOnboarding) {
+    return <OnboardingNavigator />;
+  }
+
+  return <MainNavigator />;
 }
 
 const styles = StyleSheet.create({
