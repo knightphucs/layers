@@ -16,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Navigation
 import RootNavigator from "./src/navigation/RootNavigator";
+import { flushPendingNavigation, navigationRef } from "./src/navigation/navigationRef";
 
 // Polish components
 import { ToastProvider } from "./src/components/Toast";
@@ -124,7 +125,7 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <ToastProvider>
-            <NavigationContainer>
+            <NavigationContainer ref={navigationRef} onReady={flushPendingNavigation}>
               <DynamicStatusBar />
               <OfflineBanner />
               <RootNavigator />

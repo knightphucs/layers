@@ -24,6 +24,7 @@ import Constants from "expo-constants";
 import { notificationService } from "../services/notifications";
 import { useNotificationStore } from "../store/notificationStore";
 import { NotificationData } from "../types/notifications";
+import { navigateFromNotification } from "../navigation/navigationRef";
 
 // ============================================================
 // CONFIGURE NOTIFICATION HANDLER
@@ -218,11 +219,7 @@ export function useNotifications(): UseNotificationsReturn {
       }
 
       // Deep link based on notification type
-      if (data?.screen) {
-        // TODO Week 5 Day 4: Wire up React Navigation deep linking
-        // navigationRef.navigate(data.screen, data.params);
-        console.log(`Navigate to: ${data.screen}`, data.params);
-      }
+      navigateFromNotification(data);
     },
     [],
   );

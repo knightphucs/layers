@@ -36,6 +36,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useInboxStore } from "../../store/inboxStore";
 import { Colors } from "../../constants/colors";
 import { InboxItem, InboxCategory } from "../../types/inbox";
+import { LetterReaderSheet, ReplyComposer } from "../../components/inbox";
 import LetterCard from "../../components/inbox/LetterCard";
 import CategoryFilter from "../../components/inbox/CategoryFilter";
 import EmptyInbox from "../../components/inbox/EmptyInbox";
@@ -47,6 +48,8 @@ import EmptyInbox from "../../components/inbox/EmptyInbox";
 export default function InboxScreen() {
   const layer = useAuthStore((s) => s.layer);
   const colors = Colors[layer.toLowerCase() as "light" | "shadow"];
+  const [readerItem, setReaderItem] = React.useState<InboxItem | null>(null);
+  const [replyItem, setReplyItem] = React.useState<InboxItem | null>(null);
 
   // Inbox state
   const {
@@ -123,38 +126,15 @@ export default function InboxScreen() {
         return;
       }
 
-      // TODO Week 5 Day 3: Open letter reader bottom sheet
-      // For now, show alert with preview
-      const payload = item.artifact.payload;
-      const text =
-        payload?.text ||
-        payload?.caption ||
-        payload?.title ||
-        "No content available";
-      Alert.alert(
-        `${CONTENT_ICONS[item.artifact.content_type] || "📦"} ${
-          CONTENT_LABELS[item.artifact.content_type] || "Artifact"
-        }`,
-        text.substring(0, 300),
-        [
-          {
-            text: "Reply ✉️",
-            onPress: () => handleReply(item),
-          },
-          { text: "Close" },
-        ],
-      );
+      // Open reader sheet
+      setReaderItem(item);
     },
     [markAsRead],
   );
 
   const handleReply = useCallback((item: InboxItem) => {
-    // TODO Week 5 Day 3: Open reply composer
-    Alert.alert(
-      "✉️ Slow Mail Reply",
-      "Reply feature coming in Day 3! Your reply will take 6-12 hours to deliver.",
-      [{ text: "OK" }],
-    );
+    setReaderItem(null); // close reader first
+    setReplyItem(item);
   }, []);
 
   const handleEmptyAction = useCallback(() => {
@@ -379,6 +359,17 @@ export default function InboxScreen() {
           })}
         />
       )}
+
+      <LetterReaderSheet
+        item={readerItem}
+        onClose={() => setReaderItem(null)}
+        onReply={handleReply}
+      />
+      <ReplyComposer
+        item={replyItem}
+        onClose={() => setReplyItem(null)}
+        onSent={() => fetchStats?.()}
+      />
     </SafeAreaView>
   );
 }
