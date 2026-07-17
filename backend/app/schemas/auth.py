@@ -160,3 +160,7 @@ class ChangePassword(BaseModel):
         if not any(c.isdigit() for c in v):
             raise ValueError("Password must contain at least one digit")
         return v
+    
+class AccountDeleteConfirm(BaseModel):
+    """Confirm account deletion"""
+    password: str = Field(..., min_length=8, max_length=100)

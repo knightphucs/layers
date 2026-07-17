@@ -40,6 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.connection import Connection, ConnectionStatus
 from app.models.user import User
+from app.services.block_service import BlockService
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,10 @@ class ConnectionService:
 
         Called by ArtifactService.reply_to_artifact() — when A replies to B.
         """
+        if await BlockService.is_blocked_between(db, user_a_id, user_b_id):
+            logger.info("Interaction suppressed — block exists between pair")
+            return None
+        
         if user_a_id == user_b_id:
             raise ValueError("Cannot create connection with yourself")
 

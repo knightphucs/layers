@@ -23,6 +23,7 @@ from app.api.v1.gamification import router as gamification_router
 from app.api.v1.moderation import router as moderation_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.shadow import router as shadow_router
+from app.api.v1.users import router as users_router
 
 api_router = APIRouter()
 
@@ -45,6 +46,7 @@ api_router.include_router(gamification_router)
 api_router.include_router(moderation_router)
 api_router.include_router(reports_router)
 api_router.include_router(shadow_router)
+api_router.include_router(users_router)
 
 @api_router.get("/", tags=["API Info"])
 async def api_info():
@@ -54,8 +56,8 @@ async def api_info():
     return {
         "api_version": "v1",
         "status": "active",
-        "week": 8,
-        "day": 5,
+        "week": 9,
+        "day": 3,
         "modules": {
             "auth": "✅ Active (Week 1)",
             "map": "✅ Active (Day 1 — PostGIS geo-queries)",
@@ -76,10 +78,11 @@ async def api_info():
             "admin": "✅ Active (Week 8 Day 3 — SQLAdmin & moderation tools)",
             "shadow": "✅ Active (Week 8 Day 4 — Glitch Zones & Midnight Lock)",
             "security_hardening": "✅ Active (Week 8 Day 5 — CORS, allowed hosts, HTTPS)",
+            "users": "✅ Active (Week 9 Day 3 — User blocking system)",
         },
         "websocket_endpoints": [
             "WS /api/v1/chat/ws/{room_id}?token={jwt}",
         ],
-        "endpoints_total": 92,
+        "endpoints_total": 95,
         "test_files": 26,
     }

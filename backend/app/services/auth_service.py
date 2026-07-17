@@ -391,6 +391,53 @@ class AuthService:
         logger.info(f"Account deactivated: {user.email}")
 
         return MessageResponse(message="Account has been deactivated.")
+    
+    # ========================================================
+    # PERMANENT ACCOUNT DELETION
+    # ========================================================
+    
+    @staticmethod
+    async def delete_account_permanently(
+        db: AsyncSession,
+        user: User,
+        password: str,
+    ) -> MessageResponse:
+        """PERMANENT deletion (App Store requirement).
+
+        Anonymizes PII, removes the user's artifacts from the city, and
+        deactivates the account. Existing JWTs die automatically because
+        get_current_user rejects inactive users.
+        """
+        if not verify_password(password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password is incorrect",
+            )
+
+        import secrets
+        suffix = secrets.token_hex(4)
+
+        # 1. Anonymize PII
+        user.email = f"deleted_{suffix}@deleted.layers.invalid"
+        user.username = f"deleted_user_{suffix}"
+        user.password_hash = get_password_hash(secrets.token_urlsafe(32))
+        user.bio = None
+        user.avatar_url = None
+
+        # 2. Remove their letters from the city
+        from app.models.artifact import Artifact, ArtifactStatus
+        artifacts = (
+            await db.execute(select(Artifact).where(Artifact.user_id == user.id))
+        ).scalars().all()
+        for artifact in artifacts:
+            artifact.status = ArtifactStatus.DELETED
+
+        # 3. Deactivate — kills all outstanding tokens via get_current_user
+        user.is_active = False
+
+        await db.commit()
+        logger.info(f"Account permanently deleted (anonymized): {suffix}")
+        return MessageResponse(message="Your account has been permanently deleted.")
 
     # ========================================================
     # AVAILABILITY CHECKS
