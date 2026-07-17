@@ -17,6 +17,7 @@ export { chatService, WebSocketClient, buildWSUrl } from "./chat";
 export { socialSparkService } from "./social_spark";
 export { gameService } from "./game";
 export { gamificationService } from "./gamification";
+export { usersService } from "./users";
 
 export type {
   LoginRequest,

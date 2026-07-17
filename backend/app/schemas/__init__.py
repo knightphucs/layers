@@ -13,7 +13,8 @@ from app.schemas.auth import (
     MessageResponse,
     PasswordResetRequest,
     PasswordResetConfirm,
-    ChangePassword
+    ChangePassword,
+    AccountDeleteConfirm,
 )
 
 from app.schemas.location import (
@@ -153,6 +154,7 @@ __all__ = [
     "PasswordResetRequest",
     "PasswordResetConfirm",
     "ChangePassword",
+    "AccountDeleteConfirm",
     
     # Location
     "LayerType",

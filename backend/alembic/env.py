@@ -41,6 +41,7 @@ from app.models.user_badge import UserBadge
 from app.models.moderation_log import ModerationLog
 from app.models.report import Report
 from app.models.glitch_zone import GlitchZone
+from app.models.user_block import UserBlock
 
 # Alembic Config object
 config = context.config

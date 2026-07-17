@@ -25,6 +25,7 @@ from app.schemas.auth import (
     PasswordResetConfirm,
     ChangePassword,
     AuthResponse,
+    AccountDeleteConfirm
 )
 from app.services.auth_service import AuthService
 from app.core.storage import upload_avatar, ALLOWED_IMAGE_TYPES
@@ -221,6 +222,15 @@ async def deactivate_account(
     """Deactivate current user's account."""
     return await AuthService.deactivate_account(db, user)
 
+@router.delete("/me/delete", response_model=MessageResponse)
+async def delete_account_permantly(
+    data: AccountDeleteConfirm,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """PERMANENTLY delete account. Anonymizes PII, removes artifacts.
+    Requires password confirmation. Cannot be undone."""
+    return await AuthService.delete_account_permanently(db, user, data)
 
 @router.post("/logout", response_model=MessageResponse)
 async def logout(

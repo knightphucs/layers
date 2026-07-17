@@ -29,6 +29,8 @@ import ConnectionsScreen from "./ConnectionsScreen";
 import PaperPlaneScreen from "./PaperPlaneScreen";
 import TimeCapsuleScreen from "./TimeCapsuleScreen";
 import MessagesContainer from "./MessagesContainer";
+import AchievementsScreen from "./AchievementsScreen";
+import PrivacySafetyScreen from "./PrivacySafetyScreen";
 
 // ============================================================
 // MENU ITEMS
@@ -132,6 +134,8 @@ export default function ProfileScreen() {
   const [showPaperPlane, setShowPaperPlane] = useState(false);
   const [showTimeCapsule, setShowTimeCapsule] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [showPrivacySafety, setShowPrivacySafety] = useState(false);
 
   // ========================================================
   // LOAD DATA
@@ -197,10 +201,10 @@ export default function ProfileScreen() {
           Alert.alert("📦 Inventory", "Coming in Week 7!", [{ text: "OK" }]);
           break;
         case "achievements":
-          Alert.alert("🏆 Achievements", "Coming in Week 7!", [{ text: "OK" }]);
+          setShowAchievements(true);
           break;
         case "privacy":
-          Alert.alert("🔒 Privacy", "Coming in Week 8!", [{ text: "OK" }]);
+          setShowPrivacySafety(true);
           break;
         case "logout":
           Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -272,6 +276,14 @@ export default function ProfileScreen() {
         onBack={() => setShowNotificationPrefs(false)}
       />
     );
+  }
+
+  if (showAchievements) {
+    return <AchievementsScreen onBack={() => setShowAchievements(false)} />;
+  }
+
+  if (showPrivacySafety) {
+    return <PrivacySafetyScreen onBack={() => setShowPrivacySafety(false)} />;
   }
 
   // ========================================================
