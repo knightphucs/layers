@@ -32,8 +32,13 @@ A location-based social network with AR and gamification. Users discover and lea
 
 ```bash
 docker-compose up -d
-# Services: layers_postgres :5432, layers_redis :6379, layers_minio :9000
+# Services: layers_postgres :5433, layers_redis :6379, layers_minio :9000 (console :9001)
 ```
+
+Requires a root `.env` with `POSTGRES_PASSWORD`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`.
+Note Postgres is published on **5433**, and the compose DB user is `layers_admin`. Set a real
+`DATABASE_URL` in `backend/.env` — the default in `config.py` matches the compose user and port
+but carries a placeholder password.
 
 ### 2. Backend
 
@@ -44,8 +49,14 @@ venv\Scripts\activate        # Windows
 # source venv/bin/activate   # Mac/Linux
 pip install -r requirements.txt
 cp .env.example .env
-alembic upgrade head          # Run migrations
+alembic upgrade head          # Run migrations (required)
 uvicorn app.main:app --reload # http://localhost:8000
+```
+
+Testing on a physical phone? Bind to all interfaces, not localhost:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 API docs: `http://localhost:8000/docs`
@@ -80,8 +91,10 @@ layers_project/
 │   │   ├── core/            # Config, database, security (JWT)
 │   │   ├── models/          # SQLAlchemy ORM models
 │   │   ├── schemas/         # Pydantic request/response schemas
-│   │   ├── services/        # Business logic
-│   │   └── utils/           # Geo calculations, anti-cheat, notifications
+│   │   ├── services/        # Business logic (all of it)
+│   │   ├── admin/           # SQLAdmin panel mounted at /admin
+│   │   ├── workers/         # Batch image moderation scanner
+│   │   └── utils/           # Geo calculations, anti-cheat, shadow time windows
 │   ├── alembic/versions/    # Database migrations
 │   ├── tests/               # pytest unit & integration tests
 │   ├── .env.example
@@ -92,16 +105,21 @@ layers_project/
 │   │   ├── screens/         # LoginScreen, MapScreen, ProfileScreen, etc.
 │   │   ├── components/      # ArtifactMarker, FogOverlay, LayerToggle
 │   │   ├── services/        # Axios API client
-│   │   ├── store/           # Zustand state (auth, map, artifacts)
-│   │   ├── navigation/      # Auth / Main / Root navigators
+│   │   ├── store/           # Zustand state (auth, map, artifacts, chat, inbox, ...)
+│   │   ├── hooks/           # Location, notifications, fog of war, network status
+│   │   ├── types/           # Shared TS types mirroring backend schemas
+│   │   ├── navigation/      # Root → Auth | Onboarding | Main
 │   │   └── constants/       # Colors, config, Light/Shadow themes
 │   ├── App.tsx
 │   └── package.json
 ├── docs/
-│   ├── API_DOCUMENTATION.md
+│   ├── API_DOCUMENTATION.md      # All 107 endpoints
+│   ├── ARCHITECTURE.md           # Data model, lifecycles, pipelines, perf playbook
+│   ├── PRODUCTION_READINESS.md   # Launch blockers — read before deploying
 │   └── SECURITY_CHECKLIST.md
 ├── docker-compose.yml
-└── CLAUDE.md
+├── CLAUDE.md                     # Agent guide (mirror: AGENTS.md)
+└── AGENTS.md
 ```
 
 ---
@@ -154,13 +172,35 @@ chunk_y = int(latitude  / 0.0009°)     # ~100m latitude
 | 9    | Polish       | AR garden, Shadow layer effects, onboarding flow         |
 | 10   | Launch       | App Store prep, beta, launch                             |
 
-### Current Status — Week 5
+### Current Status — Week 9 Day 4 (in progress)
 
-- Memory Inbox screen — complete
-- Category filters + infinite scroll + pull-to-refresh — complete
-- Sealed/opened letter cards + unread badge + stats bar — complete
-- Empty states for letters, replies, paper planes, and time capsules — complete
-- Social layer begins: users now have a place to receive letters, paper planes, and time capsules from strangers
+**Backend:** 107 endpoints across 19 route modules, 28 models / 28 tables, 21 Alembic migrations,
+26 test files, SQLAdmin panel at `/admin`.
+**Mobile:** 22 screens, 14 API service modules, 12 Zustand stores.
+
+Shipped:
+
+| Area | State |
+| --- | --- |
+| Auth, profiles, avatars, account deletion | ✅ |
+| PostGIS map, artifacts, geo-lock, Slow Mail, paper planes, time capsules | ✅ |
+| Fog of war + exploration stats/heatmap/leaderboard | ✅ |
+| Anti-cheat (mock GPS, jump detection, drop limits) | ✅ |
+| Connections + WebSocket chat + campfires (multi-worker via Redis pub/sub) | ✅ |
+| Social spark: boost / anonymous wave / synchronicity | ✅ |
+| Campfire games (Truth or Dare) | ✅ |
+| XP, levels, ranks, daily quests, streaks, badges, leaderboards | ✅ |
+| Moderation, trust-weighted reports, reputation, admin panel | ✅ |
+| Shadow layer: glitch zones, midnight lock | ✅ |
+| Onboarding + story mode, inbox with letter reader, user blocking | ✅ |
+| Push notification plumbing | ⚠️ tokens/preferences/history work; **nothing is actually sent yet** |
+
+**In flight (Day 4 — performance):** request timing middleware, Postgres perf audit script,
+image caching via expo-image, skeleton loaders, map marker memoization, logging removed from hot
+paths.
+
+**Before launch:** see [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md) — there is
+no deployment path, no CI, and no crash reporting yet.
 
 ---
 

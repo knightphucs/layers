@@ -35,8 +35,12 @@ mobile/.expo/
 mobile/dist/
 mobile/web-build/
 
-# Claude AI personal config (not for teammates)
-.claude/
+# Claude AI personal config (not for teammates) — but DO version the shared
+# workflow skills. Note: this must exclude the directory's *contents* (.claude/*),
+# not the directory itself; git never descends into an excluded directory, so
+# `.claude/` + `!.claude/skills/` would not work.
+.claude/*
+!.claude/skills/
 
 # Redundant planning docs (content merged into README.md)
 FEATURE_IDEAS.md
