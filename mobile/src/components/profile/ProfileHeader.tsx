@@ -8,11 +8,12 @@
  */
 
 import React, { useMemo, useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Colors } from "../../constants/colors";
 import { useAuthStore } from "../../store/authStore";
 import { User } from "../../types";
 import { getRankForLevel } from "../../services/profile";
+import { CachedImage } from "../common";
 
 interface ProfileHeaderProps {
   user: User;
@@ -41,8 +42,8 @@ const ProfileHeader = React.memo(
           style={styles.avatarWrapper}
         >
           {hasAvatar && !imageError ? (
-            <Image
-              source={{ uri: user.avatar_url! }}
+            <CachedImage
+              uri={user.avatar_url}
               style={[styles.avatar, { borderColor: colors.primary }]}
               onError={() => {
                 console.warn("[ProfileHeader] Avatar failed to load:", user.avatar_url);

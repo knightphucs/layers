@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +30,7 @@ import TimeCapsuleScreen from "./TimeCapsuleScreen";
 import MessagesContainer from "./MessagesContainer";
 import AchievementsScreen from "./AchievementsScreen";
 import PrivacySafetyScreen from "./PrivacySafetyScreen";
+import { ProfileStatsSkeleton } from "../../components/common";
 
 // ============================================================
 // MENU ITEMS
@@ -295,12 +295,7 @@ export default function ProfileScreen() {
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.background }]}
       >
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            Loading profile...
-          </Text>
-        </View>
+        <ProfileStatsSkeleton />
       </SafeAreaView>
     );
   }
@@ -347,9 +342,7 @@ export default function ProfileScreen() {
         {statsData ? (
           <StatsGrid stats={statsData} />
         ) : isLoading ? (
-          <View style={styles.statsLoading}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
+          <ProfileStatsSkeleton />
         ) : null}
 
         <BadgeGrid />

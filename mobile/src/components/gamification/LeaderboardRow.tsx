@@ -5,10 +5,11 @@
  */
 
 import React from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { Colors } from "../../constants/colors";
 import { useAuthStore } from "../../store/authStore";
 import { LeaderboardEntry } from "../../types/gamification";
+import { CachedImage } from "../common";
 
 interface Props {
   entry: LeaderboardEntry;
@@ -44,7 +45,7 @@ function LeaderboardRowBase({ entry }: Props) {
       </View>
 
       {entry.avatar_url ? (
-        <Image source={{ uri: entry.avatar_url }} style={styles.avatar} />
+        <CachedImage uri={entry.avatar_url} style={styles.avatar} />
       ) : (
         <View
           style={[

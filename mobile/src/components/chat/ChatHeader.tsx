@@ -10,7 +10,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Platform,
 } from "react-native";
@@ -18,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/colors";
 import { useAuthStore } from "../../store/authStore";
 import { WSConnectionState } from "../../types/chat";
+import { CachedImage } from "../common";
 
 interface ChatHeaderProps {
   username?: string | null;
@@ -74,7 +74,7 @@ export function ChatHeader({
 
         <View style={styles.userInfo}>
           {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            <CachedImage uri={avatarUrl} style={styles.avatar} />
           ) : (
             <View
               style={[

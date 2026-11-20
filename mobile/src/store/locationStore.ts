@@ -137,7 +137,6 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 
     // Don't start multiple watchers
     if (state.isWatching) {
-      console.log("Already watching location");
       return;
     }
 
@@ -177,7 +176,6 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       );
 
       set({ isWatching: true, error: null });
-      console.log("📍 Location watching started");
     } catch (error) {
       console.error("Watch location failed:", error);
       set({ error: "Failed to start location tracking" });
@@ -191,7 +189,6 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       locationSubscription = null;
     }
     set({ isWatching: false });
-    console.log("📍 Location watching stopped");
   },
 
   // Manually set location (for testing)

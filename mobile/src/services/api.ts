@@ -57,11 +57,6 @@ api.interceptors.request.use(
       console.error("Error getting token:", error);
     }
 
-    // Log request in dev mode
-    if (__DEV__) {
-      console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`);
-    }
-
     return config;
   },
   (error) => {
@@ -75,22 +70,12 @@ api.interceptors.request.use(
 // ============================================
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Log successful response in dev mode
-    if (__DEV__) {
-      console.log(`✅ ${response.status} ${response.config.url}`);
-    }
     return response;
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
-
-    // Log error in dev mode
-    if (__DEV__) {
-      console.log(`❌ ${error.response?.status} ${originalRequest?.url}`);
-      console.log("Error:", error.response?.data);
-    }
 
     // Skip token refresh for auth endpoints - a 401 here means invalid credentials
     const authEndpoints = ['/auth/login', '/auth/register', '/auth/refresh'];

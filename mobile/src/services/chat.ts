@@ -312,9 +312,6 @@ export class WebSocketClient {
     }
 
     const url = buildWSUrl(this.opts.roomId, token);
-    if (__DEV__)
-      console.log(`[WS] connecting ${this.opts.roomId.slice(0, 8)}...`);
-
     try {
       this.ws = new WebSocket(url);
     } catch (e) {
@@ -324,7 +321,6 @@ export class WebSocketClient {
     }
 
     this.ws.onopen = () => {
-      if (__DEV__) console.log(`[WS] open ${this.opts.roomId.slice(0, 8)}`);
       this.reconnectAttempt = 0;
       this._setState("connected");
       this._flushQueue();
@@ -347,11 +343,6 @@ export class WebSocketClient {
     this.ws.onclose = (ev: WebSocketCloseEvent) => {
       const code = ev.code ?? 1006;
       const reason = ev.reason ?? "";
-      if (__DEV__) {
-        console.log(
-          `[WS] closed ${this.opts.roomId.slice(0, 8)} code=${code} reason="${reason}"`,
-        );
-      }
       this.ws = null;
 
       if (this.isManualClose) {
@@ -377,11 +368,6 @@ export class WebSocketClient {
     const delay = RECONNECT_DELAYS_MS[idx];
     this.reconnectAttempt += 1;
     this._setState("reconnecting");
-    if (__DEV__) {
-      console.log(
-        `[WS] reconnect in ${delay}ms (attempt ${this.reconnectAttempt})`,
-      );
-    }
     this.reconnectTimer = setTimeout(() => {
       this._open();
     }, delay);

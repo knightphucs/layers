@@ -66,7 +66,7 @@ export const authService = {
       await api.post("/auth/logout");
     } catch (error) {
       // Even if server logout fails, we still clear local tokens
-      console.log("Server logout failed, clearing local tokens");
+      console.warn("Server logout failed, clearing local tokens");
     }
   },
 

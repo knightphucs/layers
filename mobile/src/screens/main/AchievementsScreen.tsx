@@ -127,6 +127,7 @@ export default function AchievementsScreen({ onBack }: Props) {
     ({ item }: { item: BadgeItem }) => <BadgeRow badge={item} colors={colors} />,
     [colors],
   );
+  const keyExtractor = useCallback((item: BadgeItem) => item.id, []);
 
   return (
     <SafeAreaView
@@ -199,10 +200,11 @@ export default function AchievementsScreen({ onBack }: Props) {
       ) : (
         <FlatList
           data={badges}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
         />
       )}
     </SafeAreaView>

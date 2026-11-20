@@ -40,6 +40,7 @@ import { LetterReaderSheet, ReplyComposer } from "../../components/inbox";
 import LetterCard from "../../components/inbox/LetterCard";
 import CategoryFilter from "../../components/inbox/CategoryFilter";
 import EmptyInbox from "../../components/inbox/EmptyInbox";
+import { InboxCardSkeleton, SkeletonList } from "../../components/common";
 
 // ============================================================
 // INBOX SCREEN
@@ -319,7 +320,7 @@ export default function InboxScreen() {
       {/* Loading state (initial) */}
       {isLoading && items.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <SkeletonList count={6}><InboxCardSkeleton /></SkeletonList>
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Loading your memories...
           </Text>
@@ -351,12 +352,7 @@ export default function InboxScreen() {
           removeClippedSubviews={true}
           maxToRenderPerBatch={10}
           windowSize={10}
-          initialNumToRender={10}
-          getItemLayout={(_data, index) => ({
-            length: 110, // Approximate card height
-            offset: 110 * index,
-            index,
-          })}
+          initialNumToRender={8}
         />
       )}
 

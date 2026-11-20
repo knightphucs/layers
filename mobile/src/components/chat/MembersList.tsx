@@ -11,10 +11,11 @@
  */
 
 import React, { useMemo } from "react";
-import { View, Text, Image, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { Colors } from "../../constants/colors";
 import { useAuthStore } from "../../store/authStore";
 import { CampfireMemberInfo } from "../../types/chat";
+import { CachedImage } from "../common";
 
 // ============================================================
 // SINGLE AVATAR
@@ -40,7 +41,7 @@ const MemberAvatar = React.memo(function MemberAvatar({
     <View style={styles.avatarWrap}>
       <View style={styles.avatarContainer}>
         {member.avatar_url ? (
-          <Image source={{ uri: member.avatar_url }} style={styles.avatar} />
+          <CachedImage uri={member.avatar_url} style={styles.avatar} />
         ) : (
           <View
             style={[
