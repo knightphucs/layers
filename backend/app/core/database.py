@@ -7,8 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import MetaData
 from typing import AsyncGenerator
+import logging
 
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 # Naming convention for constraints (helps with migrations)
@@ -65,10 +69,26 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db():
-    """Initialize database tables"""
+    """Create tables — DEVELOPMENT ONLY.
+
+    Alembic owns the schema. Running create_all in production is worse than
+    useless: it is a no-op for tables that already exist, so a model change
+    with no matching migration would silently leave the app running against
+    a schema that doesn't match its models. Failing loudly is safer.
+
+    The production deploy step is `alembic upgrade head`, not this function.
+    """
+    if not settings.debug:
+        logger.info(
+            "Skipping create_all — Alembic owns the schema. "
+            "Run 'alembic upgrade head' as a deploy step."
+        )
+        return
+
     async with engine.begin() as conn:
-        # Import all models here so they are registered
-        from app.models import user, location, artifact, connection, inventory
+        # Import the models PACKAGE so every model is registered. Importing a
+        # hand-picked subset silently skips tables for the ones left out.
+        from app import models  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
 
 

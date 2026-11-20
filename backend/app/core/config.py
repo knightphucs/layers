@@ -19,9 +19,11 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     
     # Database
-    database_url: str = "postgresql+asyncpg://layers_user:layers_secret_2024@localhost:5432/layers_db"
-    database_url_sync: str = "postgresql://layers_user:layers_secret_2024@localhost:5432/layers_db"
-    test_database_url: str = "postgresql+asyncpg://layers_user:layers_secret_2024@localhost:5432/layers_test_db"
+    # Defaults match docker-compose.yml: user `layers_admin`, host port 5433.
+    # Always set these in .env — the password here is a placeholder.
+    database_url: str = "postgresql+asyncpg://layers_admin:layers_secret_2024@localhost:5433/layers_db"
+    database_url_sync: str = "postgresql://layers_admin:layers_secret_2024@localhost:5433/layers_db"
+    test_database_url: str = "postgresql+asyncpg://layers_admin:layers_secret_2024@localhost:5433/layers_test_db"
     
     # Redis
     redis_url: str = "redis://localhost:6379/0"

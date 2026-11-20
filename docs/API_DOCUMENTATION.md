@@ -1,7 +1,11 @@
 # 📖 LAYERS API Documentation
 
-> Version: 1.0.0 (Week 8 Day 5) | Base URL: `http://localhost:8000/api/v1`
-> 92 endpoints across 18 route modules + 1 WebSocket endpoint + a separate SQLAdmin panel at `/admin`.
+> Version: 1.0.0 (Week 9 Day 4) | Base URL: `http://localhost:8000/api/v1`
+> 108 route handlers across 19 route modules (including 1 WebSocket endpoint), plus the
+> `/api/v1/` version-info endpoint and a separate SQLAdmin panel at `/admin`.
+>
+> Swagger (`/docs`) and ReDoc (`/redoc`) are served **only when `DEBUG=True`** — in production
+> this file is the API reference.
 
 ---
 
@@ -38,7 +42,8 @@ Legend: ✅ = Bearer token required · 🔓 = no auth · 🛡️ = admin only.
 | POST   | `/auth/change-password`           | ✅   | Change password (requires current)         |
 | GET    | `/auth/me`                        | ✅   | Get current user profile                   |
 | PUT    | `/auth/me`                        | ✅   | Update profile                             |
-| DELETE | `/auth/me`                        | ✅   | Deactivate account                         |
+| DELETE | `/auth/me`                        | ✅   | Deactivate account (soft, reversible)      |
+| DELETE | `/auth/me/delete`                 | ✅   | Permanent delete: anonymize PII, remove artifacts (password required) |
 | POST   | `/auth/logout`                    | ✅   | Logout (stateless JWT — logs it only)      |
 | GET    | `/auth/check-email/{email}`       | 🔓   | Check email availability                   |
 | GET    | `/auth/check-username/{username}` | 🔓   | Check username availability                |
@@ -230,6 +235,23 @@ Legend: ✅ = Bearer token required · 🔓 = no auth · 🛡️ = admin only.
 | GET    | `/shadow/midnight`     | ✅   | Is the 23:00–03:00 (HCMC time) window open right now? (city-wide)      |
 | GET    | `/shadow/glitch-zones` | ✅   | Glitch zones near (lat,lng) for map overlay                            |
 | POST   | `/shadow/glitch-zones` | 🛡️   | Create a glitch zone                                                   |
+
+### Users & Blocking (`/users`)
+
+| Method | Endpoint                 | Auth | Description                                  |
+| ------ | ------------------------ | ---- | -------------------------------------------- |
+| GET    | `/users/me/blocks`       | ✅   | List users the current user has blocked      |
+| POST   | `/users/{user_id}/block` | ✅   | Block a user (idempotent)                    |
+| DELETE | `/users/{user_id}/block` | ✅   | Unblock a user                               |
+
+Blocking is enforced at `ConnectionService.record_interaction` — the funnel every social
+escalation passes through (reply → SIGNAL → CONNECTED → chat) — so a block stops **new** contact
+between the pair. Existing anonymous geo-artifacts stay visible by design: they are city content,
+not directed messages. Blocks are one-directional in storage but enforced symmetrically via
+`is_blocked_between()`.
+
+Reports and blocks solve different problems: reports protect the community (content-level,
+trust-weighted, admin-reviewed), blocks protect the individual (pair-level, immediate, no review).
 
 ### Admin Panel (not part of `/api/v1`)
 
