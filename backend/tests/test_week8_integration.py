@@ -71,6 +71,13 @@ BEN_THANH = (10.7725, 106.6980)
 
 
 async def register(client, username, email):
+    # This file registers 6 users inside a single test (the auto-hide threshold
+    # needs 5 distinct reporters), which trips RateLimitMiddleware's 5-per-5min
+    # cap on /auth/register. conftest clears the counters between tests; a test
+    # that needs several registrations has to clear them between calls too.
+    from app.core.rate_limit import rate_limiter
+    rate_limiter.requests.clear()
+
     r = await client.post("/api/v1/auth/register", json={
         "email": email, "username": username, "password": "Pass123!",
     })

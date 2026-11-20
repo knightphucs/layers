@@ -717,7 +717,7 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  map: { flex: 1, ...StyleSheet.absoluteFillObject },
+  map: { flex: 1, ...StyleSheet.absoluteFill },
 
   // User Marker
   markerContainer: {
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   campfireOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1000,
     elevation: 1000,
   },

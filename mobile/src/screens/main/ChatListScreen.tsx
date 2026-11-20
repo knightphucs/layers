@@ -16,7 +16,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   StyleSheet,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/colors";
@@ -24,6 +23,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useChatStore } from "../../store/chatStore";
 import { ChatRoomItem } from "../../types/chat";
 import { EmptyChatList } from "../../components/chat";
+import { CachedImage } from "../../components/common";
 
 // ============================================================
 // HELPERS
@@ -50,7 +50,7 @@ function timeAgo(iso: string): string {
 
 interface RowProps {
   room: ChatRoomItem;
-  onPress: () => void;
+  onPress: (roomId: string) => void;
 }
 
 const ChatRow = React.memo(function ChatRow({ room, onPress }: RowProps) {
@@ -59,10 +59,11 @@ const ChatRow = React.memo(function ChatRow({ room, onPress }: RowProps) {
 
   const username = room.other_user?.username || "Anonymous";
   const initial = username[0]?.toUpperCase() || "?";
+  const handlePress = useCallback(() => onPress(room.id), [onPress, room.id]);
 
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.6}
       style={[
         styles.row,
@@ -70,10 +71,7 @@ const ChatRow = React.memo(function ChatRow({ room, onPress }: RowProps) {
       ]}
     >
       {room.other_user?.avatar_url ? (
-        <Image
-          source={{ uri: room.other_user.avatar_url }}
-          style={styles.avatar}
-        />
+        <CachedImage uri={room.other_user.avatar_url} style={styles.avatar} />
       ) : (
         <View
           style={[
@@ -143,6 +141,12 @@ export default function ChatListScreen({
   }, [user, fetchRooms]);
 
   const keyExtractor = useCallback((item: ChatRoomItem) => item.id, []);
+  const renderItem = useCallback(
+    ({ item }: { item: ChatRoomItem }) => (
+      <ChatRow room={item} onPress={onOpenRoom} />
+    ),
+    [onOpenRoom],
+  );
 
   return (
     <SafeAreaView
@@ -178,9 +182,8 @@ export default function ChatListScreen({
         <FlatList
           data={rooms}
           keyExtractor={keyExtractor}
-          renderItem={({ item }) => (
-            <ChatRow room={item} onPress={() => onOpenRoom(item.id)} />
-          )}
+          renderItem={renderItem}
+          initialNumToRender={8}
           refreshControl={
             <RefreshControl
               refreshing={isLoading}

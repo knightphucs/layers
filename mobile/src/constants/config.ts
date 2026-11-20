@@ -26,9 +26,19 @@ const getDevHost = (): string => {
 const getDevApiUrl = (): string => `http://${getDevHost()}:8000/api/v1`;
 const getDevMinioUrl = (): string => `http://${getDevHost()}:9000`;
 
+// Production hosts. Override per-build with EXPO_PUBLIC_API_URL /
+// EXPO_PUBLIC_MINIO_URL so staging and prod don't need a code change.
+//
+// The /api/v1 suffix is NOT optional: the backend mounts its router at
+// /api/v1 (app/main.py). Dropping it makes every production request 404.
+const PROD_API_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "https://api.layers.app/api/v1";
+const PROD_MINIO_URL =
+  process.env.EXPO_PUBLIC_MINIO_URL ?? "https://storage.layers.app";
+
 export const Config = {
-  API_URL: __DEV__ ? getDevApiUrl() : "https://api.layers.app/v1",
-  MINIO_URL: __DEV__ ? getDevMinioUrl() : "https://storage.layers.app",
+  API_URL: __DEV__ ? getDevApiUrl() : PROD_API_URL,
+  MINIO_URL: __DEV__ ? getDevMinioUrl() : PROD_MINIO_URL,
 
   // Map Default Region (Ho Chi Minh City)
   MAP_DEFAULT_REGION: {

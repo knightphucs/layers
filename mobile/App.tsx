@@ -106,7 +106,6 @@ function DynamicStatusBar() {
   return (
     <StatusBar
       barStyle={isShadowMode ? "light-content" : "dark-content"}
-      backgroundColor={isShadowMode ? "#0F0F1A" : "#F0F4FF"}
       animated
     />
   );

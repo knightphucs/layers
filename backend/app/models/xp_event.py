@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -25,6 +25,12 @@ from app.core.database import Base
 class XPEvent(Base):
     """One XP award (or a recorded duplicate attempt)."""
     __tablename__ = "xp_events"
+
+    # BadgeService._event_counts GROUPs event_type per user; the composite
+    # turns that into an index-only scan (see migration w9d4_perf_001).
+    __table_args__ = (
+        Index("idx_xp_events_user_type", "user_id", "event_type"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

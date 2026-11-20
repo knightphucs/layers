@@ -119,7 +119,7 @@ export default function RegisterScreen({ navigation }: Props) {
         }));
       }
     } catch (error) {
-      console.log("Username check failed:", error);
+      console.warn("Username check failed:", error);
     } finally {
       setCheckingUsername(false);
     }
@@ -141,7 +141,7 @@ export default function RegisterScreen({ navigation }: Props) {
         }));
       }
     } catch (error) {
-      console.log("Email check failed:", error);
+      console.warn("Email check failed:", error);
     } finally {
       setCheckingEmail(false);
     }

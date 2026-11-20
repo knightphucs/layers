@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   flashOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",

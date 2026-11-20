@@ -276,7 +276,6 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
 
     if (result.success && result.data) {
       // Could trigger fog clear animation here
-      // console.log(`Explored ${result.data.new_chunks} new chunks!`);
     }
   },
 

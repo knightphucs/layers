@@ -10,7 +10,6 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  ActivityIndicator,
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +19,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useLeaderboardStore } from "../../store/leaderboardStore";
 import { LeaderboardRow } from "../../components/gamification/LeaderboardRow";
 import { LeaderboardEntry, LeaderboardScope } from "../../types/gamification";
+import { LeaderboardRowSkeleton, SkeletonList } from "../../components/common";
 
 const TABS: { key: LeaderboardScope; label: string }[] = [
   { key: "global", label: "All-time" },
@@ -87,7 +87,7 @@ export default function LeaderboardScreen() {
 
       {isLoading && entries.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={accent} />
+          <SkeletonList count={8}><LeaderboardRowSkeleton /></SkeletonList>
         </View>
       ) : error && entries.length === 0 ? (
         <View style={styles.center}>
@@ -105,6 +105,12 @@ export default function LeaderboardScreen() {
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.list}
+          getItemLayout={(_, index) => ({
+            length: 64,
+            offset: 64 * index,
+            index,
+          })}
+          initialNumToRender={8}
           refreshControl={
             <RefreshControl
               refreshing={isLoading}

@@ -274,11 +274,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       roomId,
       onStateChange: (state) => set({ wsState: state }),
       onFrame: (frame) => get()._handleFrame(frame),
-      onClosed: (code, reason) => {
-        if (__DEV__)
-          console.log(`[chatStore] WS terminal close: ${code} ${reason}`);
-        // Don't auto-clear activeRoomId on terminal close — let UI show error banner
-      },
     });
 
     set({ wsClient: client, activeRoomId: roomId });
@@ -466,12 +461,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         roomId: item.id,
         onStateChange: (state) => set({ wsState: state }),
         onFrame: (frame) => get()._handleFrame(frame),
-        onClosed: (code, reason) => {
-          if (__DEV__)
-            console.log(
-              `[chatStore] campfire WS terminal close: ${code} ${reason}`,
-            );
-        },
       });
       const existingClient = get().wsClient;
       if (existingClient) existingClient.close();
@@ -659,10 +648,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     if (frame.type === "presence") {
       // Day 5 polish will use this for "X is here" indicators
-      if (__DEV__)
-        console.log(
-          `[chatStore] presence ${frame.event} from ${frame.user_id}`,
-        );
       return;
     }
 

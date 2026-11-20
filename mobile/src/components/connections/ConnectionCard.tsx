@@ -14,7 +14,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
@@ -25,6 +24,7 @@ import {
   LEVEL_CONFIG,
   SIGNAL_THRESHOLD,
 } from "../../types/connections";
+import { CachedImage } from "../common";
 
 // ============================================================
 // HELPERS
@@ -134,8 +134,8 @@ const ConnectionCard = React.memo(
         <View style={styles.topRow}>
           <View style={styles.avatarContainer}>
             {!isAnonymous && connection.other_user.avatar_url ? (
-              <Image
-                source={{ uri: connection.other_user.avatar_url }}
+              <CachedImage
+                uri={connection.other_user.avatar_url}
                 style={styles.avatar}
               />
             ) : (

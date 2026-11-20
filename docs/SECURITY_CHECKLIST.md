@@ -1,6 +1,12 @@
 # 🔒 LAYERS Security Checklist
 
-> Review this checklist before deploying to production!
+> Review this checklist before deploying to production. Last reconciled against the code at
+> **Week 9 Day 4**.
+>
+> This file covers *security posture*. For the full launch-blocker list — deployment, CI, crash
+> reporting, push delivery — see [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md). Where the
+> two overlap, `PRODUCTION_READINESS.md` is the one to work from; this file explains the security
+> reasoning behind each item.
 
 ---
 
@@ -77,6 +83,9 @@ See `backend/app/core/security_hardening.py` and `backend/app/core/endpoint_rate
 - [x] Parameterized queries (SQLAlchemy)
 - [x] No raw SQL with user input
 - [x] Database connection pooling
+- [x] Alembic owns the schema in production — `init_db()` only runs `create_all` when
+      `DEBUG=True`, so a model change without a migration fails loudly instead of running
+      against a mismatched schema
 - [ ] **TODO (Production):** Enable SSL for database connection
 
 ---
@@ -103,11 +112,14 @@ See `backend/app/core/security_hardening.py` and `backend/app/core/endpoint_rate
 
 ### Location Verification
 
-- [x] Design: isMocked flag detection
-- [x] Design: Jumping check (>5km/sec = suspicious)
-- [x] Design: Rate limit artifact creation (3/day)
-- [x] Design: Minimum distance between artifacts (20m)
-- [ ] **TODO (Week 3):** Implement in location service
+- [x] isMocked flag detection — implemented, `app/services/anti_cheat_service.py`
+- [x] Jump detection (>5 km/sec = impossible) — implemented
+- [x] Sensor cross-check (GPS moves, accelerometer still) — implemented
+- [x] Rate limit artifact creation (3/day) — implemented
+- [x] Minimum distance between artifacts (20 m) — implemented
+- [x] Strike system: 3 strikes → permanent ban; `banned_until` for temp bans
+- [x] Server-side geo-lock: artifact content requires proof of presence within 50 m; the client
+      flag is never trusted
 
 ---
 
@@ -122,10 +134,15 @@ See `backend/app/core/security_hardening.py` and `backend/app/core/endpoint_rate
 
 ### File Uploads
 
-- [ ] **TODO (Week 5):** Validate file types
-- [ ] **TODO (Week 5):** Scan uploads for malware
-- [ ] **TODO (Week 5):** Limit file sizes
-- [ ] **TODO (Week 5):** Store in separate bucket
+- [x] MIME allowlist — `ALLOWED_IMAGE_TYPES` in `app/core/storage.py` (jpeg/png/gif/webp)
+- [x] Size limit — 5 MB, enforced in `app/api/v1/auth.py` before upload
+- [x] Randomized object names (UUID), so uploads cannot be enumerated by name
+- [ ] **Bucket is world-readable.** `_ensure_bucket()` in `app/core/storage.py` sets a policy
+      granting `s3:GetObject` to `*`. Any media URL that leaks is public forever, and photo/voice
+      artifacts stay readable after the owner deletes them. Move to presigned, expiring URLs
+      before launch — see `PRODUCTION_READINESS.md` H6.
+- [ ] **TODO:** Malware/content scanning on upload (image scan is still a stub)
+- [ ] **TODO:** Separate buckets for avatars (public) vs artifact media (private)
 
 ---
 
@@ -191,7 +208,11 @@ DEBUG=False
 | Boot-time secrets  | ✅ Secure    | Refuses to start in prod with default secrets |
 | HTTPS              | ⚠️ TODO      | Configure at reverse-proxy/deploy layer (Week 10) |
 | Content Moderation | ⚠️ Partial   | Report + reputation + rule-based profanity filter done; real AI image scan still a stub |
-| Token Blacklist    | ⚠️ TODO      | Nice-to-have, post-launch    |
+| Token Blacklist    | ⚠️ TODO      | No revocation; a stolen refresh token is valid 7 days |
+| User Blocking      | ✅ Shipped   | Week 9 Day 3 — enforced at `ConnectionService.record_interaction`; ⚠️ no test coverage yet |
+| Account Deletion   | ✅ Shipped   | Password-confirmed, anonymizes PII, removes artifacts |
+| File Storage       | ⚠️ Weak      | MinIO bucket is public-read; needs presigned URLs |
+| Prod Config Path   | ⚠️ Untested  | `DEBUG=False` boot has never actually been exercised |
 
 ---
 

@@ -100,7 +100,6 @@ export function useNotifications(): UseNotificationsReturn {
   > => {
     // Must be a physical device (not simulator for iOS)
     if (!Device.isDevice) {
-      console.log("Push notifications require a physical device");
       return null;
     }
 
@@ -116,7 +115,6 @@ export function useNotifications(): UseNotificationsReturn {
     }
 
     if (finalStatus !== "granted") {
-      console.log("Push notification permission denied");
       setHasPermission(false);
       return null;
     }
@@ -141,7 +139,6 @@ export function useNotifications(): UseNotificationsReturn {
       });
 
       const token = tokenData.data;
-      console.log("📱 Expo Push Token:", token);
 
       // Register token with backend
       try {
@@ -150,7 +147,6 @@ export function useNotifications(): UseNotificationsReturn {
           platform: Platform.OS as "ios" | "android",
           device_name: Device.modelName || undefined,
         });
-        console.log("✅ Device token registered with backend");
       } catch (err) {
         // Non-critical — token still works for local notifications
         console.warn("Failed to register token with backend:", err);
@@ -186,7 +182,6 @@ export function useNotifications(): UseNotificationsReturn {
         .data as unknown as NotificationData;
 
       if (__DEV__) {
-        console.log("🔔 Notification received:", data?.type);
       }
 
       // Store in local notification list
@@ -215,7 +210,6 @@ export function useNotifications(): UseNotificationsReturn {
         .data as unknown as NotificationData;
 
       if (__DEV__) {
-        console.log("👆 Notification tapped:", data?.type, data?.screen);
       }
 
       // Deep link based on notification type

@@ -248,7 +248,9 @@ export default function PrivacySafetyScreen({ onBack }: Props) {
         visible={showDeleteModal}
         transparent
         animationType="fade"
-        onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
+        onRequestClose={() => {
+          if (!isDeleting) setShowDeleteModal(false);
+        }}
       >
         <View style={styles.modalBackdrop}>
           <View

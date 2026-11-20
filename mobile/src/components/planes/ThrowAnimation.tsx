@@ -147,7 +147,7 @@ export default function ThrowAnimation({
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1000,
     justifyContent: "center",
     alignItems: "center",

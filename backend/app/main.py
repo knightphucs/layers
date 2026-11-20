@@ -17,6 +17,7 @@ from app.core.ws_manager import manager
 from app.core.security_hardening import (
     setup_security, get_cors_origins, validate_production_secrets,
 )
+from app.core.timing import TimingMiddleware
 
 
 # Configure logging
@@ -115,11 +116,14 @@ app.add_middleware(
     allow_origins=get_cors_origins(settings),
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 # Rate limiting (Redis-backed sliding window, in-memory fallback).
 app.add_middleware(RateLimitMiddleware)
+
+# Request timing middleware (X-Response-Time header + slow request logging)
+app.add_middleware(TimingMiddleware)
 
 # Mount the admin panel at /admin
 from app.admin.setup import setup_admin

@@ -16,7 +16,7 @@
  *   - Already unlocked: Checkmark overlay → "You've been here"
  */
 
-import React, { useEffect, useRef, memo } from "react";
+import React, { useEffect, useRef, useState, memo } from "react";
 import {
   View,
   Text,
@@ -56,6 +56,15 @@ function ArtifactMarkerComponent({ artifact, onPress }: Props) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+  // Refresh the native marker snapshot only while its range/open state changes.
+  // Once the transition has rendered, freezing it avoids Android map redraws.
+  useEffect(() => {
+    setTracksViewChanges(true);
+    const timeout = setTimeout(() => setTracksViewChanges(false), 350);
+    return () => clearTimeout(timeout);
+  }, [artifact.is_within_range, artifact.is_unlocked]);
 
   // Pulse animation when within range
   useEffect(() => {
@@ -123,7 +132,7 @@ function ArtifactMarkerComponent({ artifact, onPress }: Props) {
         longitude: artifact.longitude,
       }}
       anchor={{ x: 0.5, y: 0.5 }}
-      tracksViewChanges={false} // Performance: don't re-render every frame
+      tracksViewChanges={tracksViewChanges}
       onPress={() => onPress(artifact)}
     >
       <Animated.View
@@ -336,5 +345,18 @@ const styles = StyleSheet.create({
   },
 });
 
-// Memoize to avoid re-renders when other markers change
-export default memo(ArtifactMarkerComponent);
+// Marker objects are rebuilt on nearby fetches; compare only fields that affect
+// the rendered marker so unchanged native views remain frozen.
+export default memo(
+  ArtifactMarkerComponent,
+  (prev, next) =>
+    prev.artifact.id === next.artifact.id &&
+    prev.artifact.latitude === next.artifact.latitude &&
+    prev.artifact.longitude === next.artifact.longitude &&
+    prev.artifact.content_type === next.artifact.content_type &&
+    prev.artifact.is_unlocked === next.artifact.is_unlocked &&
+    prev.artifact.is_within_range === next.artifact.is_within_range &&
+    prev.artifact.distance_meters === next.artifact.distance_meters &&
+    prev.artifact.preview.reply_count === next.artifact.preview.reply_count &&
+    prev.onPress === next.onPress,
+);

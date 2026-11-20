@@ -57,7 +57,7 @@ async def api_info():
         "api_version": "v1",
         "status": "active",
         "week": 9,
-        "day": 3,
+        "day": 4,
         "modules": {
             "auth": "✅ Active (Week 1)",
             "map": "✅ Active (Day 1 — PostGIS geo-queries)",
@@ -79,10 +79,14 @@ async def api_info():
             "shadow": "✅ Active (Week 8 Day 4 — Glitch Zones & Midnight Lock)",
             "security_hardening": "✅ Active (Week 8 Day 5 — CORS, allowed hosts, HTTPS)",
             "users": "✅ Active (Week 9 Day 3 — User blocking system)",
+            "performance": "🚧 In progress (Week 9 Day 4 — timing middleware, query audit, client caching)",
         },
         "websocket_endpoints": [
             "WS /api/v1/chat/ws/{room_id}?token={jwt}",
         ],
-        "endpoints_total": 95,
+        # Derived, not hand-maintained — this drifted from 95 to 107 unnoticed.
+        "endpoints_total": len(
+            [r for r in api_router.routes if getattr(r, "path", None)]
+        ),
         "test_files": 26,
     }

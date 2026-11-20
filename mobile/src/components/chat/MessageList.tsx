@@ -77,7 +77,7 @@ function MessageListComponent({
         <View style={styles.loaderRow}>
           <ActivityIndicator size="small" color={colors.primary} />
         </View>
-      ) : null,
+      ) : undefined,
     [isLoadingMore, colors.primary],
   );
 
