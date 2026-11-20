@@ -19,7 +19,7 @@ This is a solo-built product heading for a real production launch with paying us
 learning exercise. Treat data loss, auth holes, and silent failures as launch blockers, not
 TODOs. Before shipping anything user-facing, read `docs/PRODUCTION_READINESS.md`.
 
-### Current build state — Week 9, Day 4 (complete, uncommitted)
+### Current build state — Week 9, Day 4 (complete, committed)
 
 <!-- UPDATE THIS SECTION when the week/day advances. It is the only part of this file
      that is time-sensitive, and it is deliberately placed first so it is hard to forget. -->
@@ -29,8 +29,8 @@ notifications plumbing, connections, WebSocket chat + campfires, social spark, c
 XP/quests/badges/leaderboards, moderation, reports/reputation, admin panel, security hardening,
 shadow layer, onboarding/story mode, inbox with letter reader, and user blocking.
 
-**Day 4 is the performance pass and is done but uncommitted.** A large diff across `mobile/src/`
-plus new backend files is that work, not stray edits:
+**Day 4 is the performance pass.** It landed on `dev` in three commits — `8906db5` (backend),
+`0941604` (mobile perf + Expo SDK 58 upgrade), `af3ebaf` (docs). What it added:
 
 | Piece | Location |
 | --- | --- |
@@ -233,6 +233,18 @@ measured and what gets rate limited.
   render correctly in both Light and Shadow — a hardcoded light grey blinds a Shadow user at 2am.
 - **API base URL** is resolved at runtime in `constants/config.ts`: `EXPO_PUBLIC_API_HOST` env
   → Expo `hostUri` LAN IP → `10.0.2.2` (Android emulator) → `localhost`.
+
+### Expo SDK 58 / React Native 0.88
+
+- Run `npx expo-doctor` after any dependency change; it should stay at 20/20. It reports only one
+  config schema error per run, so rerun until it is clean.
+- Removed `app.json` keys — do not re-add them: `newArchEnabled` (New Architecture is mandatory),
+  `android.edgeToEdgeEnabled` (always on), top-level `splash` (now the `expo-splash-screen`
+  plugin), `android.usesCleartextTraffic` (now the `expo-build-properties` plugin; needed for
+  plain-HTTP LAN testing, should be off for production builds).
+- `StyleSheet.absoluteFillObject` is gone — use `StyleSheet.absoluteFill`. `ViewToken` is now
+  `ListViewToken`. `StatusBar` has no `backgroundColor` (the bar is transparent edge-to-edge).
+- Install Expo packages with `npx expo install`, not `npm install`, so versions match the SDK.
 
 ### Performance conventions (Week 9 Day 4 — now in force)
 
